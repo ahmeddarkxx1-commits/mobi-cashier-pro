@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mobi Cashier Pro</title>
+    
+    <!-- PWA & Mobile Icons -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mobi Cashier Pro">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f8fafc;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        /* Global Dark Mode Magic Rules */
+        .dark body {
+            background-color: #020617 !important;
+            color: #f8fafc !important;
+        }
+        
+        /* Automatically convert light colors to dark equivalents */
+        .dark .bg-white { background-color: #0f172a !important; }
+        .dark .bg-slate-50, .dark .bg-gray-50 { background-color: #020617 !important; }
+        
+        .dark .border-gray-100, .dark .border-gray-200, 
+        .dark .border-slate-100, .dark .border-slate-200 { 
+            border-color: #1e293b !important; 
+        }
+        
+        .dark .text-gray-800, .dark .text-slate-800, 
+        .dark .text-gray-900, .dark .text-slate-900 { 
+            color: #f8fafc !important; 
+        }
+        
+        .dark .text-gray-600, .dark .text-slate-600, 
+        .dark .text-gray-500, .dark .text-slate-500 { 
+            color: #94a3b8 !important; 
+        }
+
+        .dark input {
+            background-color: #1e293b !important;
+            color: #fff !important;
+            border-color: #334155 !important;
+        }
+        
+        .dark input::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        .h-screen {
+            height: 100vh;
+            height: Math.max(100vh, -webkit-fill-available);
+        }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="antialiased">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
