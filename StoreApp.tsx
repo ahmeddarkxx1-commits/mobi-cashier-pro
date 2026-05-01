@@ -455,14 +455,14 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           </div>
         )}
         <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 p-4 sticky top-0 z-30 flex items-center justify-between shrink-0 h-16 sm:h-20 transition-colors duration-300">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1 sm:flex-initial">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-xl"
+              className="lg:hidden p-2 text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-xl shrink-0"
             >
               <Menu size={24} />
             </button>
-            <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white truncate transition-colors duration-300">
+            <h2 className="text-sm sm:text-lg font-black text-slate-800 dark:text-white truncate transition-colors duration-300">
               {menuItems.find(i => i.id === activeSection)?.label}
             </h2>
             <div className="hidden md:flex flex-col border-r border-slate-200 dark:border-slate-800 pr-4 mr-1">
@@ -472,7 +472,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           </div>
           
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl border border-green-100 dark:border-green-900/30 shadow-sm transition-colors duration-300">
+            <div className="hidden min-[400px]:flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl border border-green-100 dark:border-green-900/30 shadow-sm transition-colors duration-300">
                <span className="text-[10px] sm:text-xs font-black">الخزنة (كاش):</span>
                <span className="font-black text-xs sm:text-sm tabular-nums" dir="ltr">
                  {Math.round(cashBalance).toLocaleString()} ج
@@ -530,7 +530,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
 
             <button 
               onClick={onLogout}
-              className="p-2 sm:p-3 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors flex items-center gap-2 border border-red-100 dark:border-red-900/30"
+              className="p-2 sm:p-3 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors flex items-center gap-2 border border-red-100 dark:border-red-900/30 shrink-0 min-w-[40px] justify-center"
               title="خروج سريع"
             >
               <LogOut size={18} />
