@@ -166,10 +166,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 font-['Cairo'] pb-20">
       
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm w-fit mx-auto">
-        <button onClick={() => setActiveTab('staff')} className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all ${activeTab === 'staff' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Users size={18} /> المستخدمين</button>
-        <button onClick={() => setActiveTab('financial')} className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all ${activeTab === 'financial' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Save size={18} /> عمولات الشركات</button>
-        <button onClick={() => setActiveTab('appearance')} className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all ${activeTab === 'appearance' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><RefreshCw size={18} /> المظهر والشكل</button>
+      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm w-fit max-w-full mx-auto overflow-x-auto no-scrollbar">
+        <button onClick={() => setActiveTab('staff')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'staff' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Users size={18} /> المستخدمين</button>
+        <button onClick={() => setActiveTab('financial')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'financial' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Save size={18} /> عمولات الشركات</button>
+        <button onClick={() => setActiveTab('appearance')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'appearance' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><RefreshCw size={18} /> المظهر والشكل</button>
       </div>
 
       {/* Subscription Card - Always Visible */}
