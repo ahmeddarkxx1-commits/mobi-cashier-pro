@@ -250,6 +250,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
         </div>
       </section>
 
+      {/* Support & Help Section - For Lost Users */}
+      <section id="support" className="py-24 relative z-10 bg-slate-900/50">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/20 rounded-[3rem] p-8 md:p-16 text-center shadow-2xl">
+            <div className="w-20 h-20 bg-emerald-600/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-emerald-500/20">
+              <MessageCircle size={40} className="text-emerald-500" />
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black mb-6 text-white">تايه ومش عارف تبدأ منين؟ 🤔</h2>
+            <p className="text-slate-400 text-lg md:text-xl mb-12 leading-relaxed">
+              لا تقلق، نحن معك في كل خطوة. انضم لقناتنا الرسمية لمشاهدة فيديوهات الشرح، أو تواصل معنا مباشرة على الواتساب وسنقوم بمساعدتك في إعداد حسابك فوراً.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+              <a 
+                href="https://whatsapp.com/channel/0029VbDO2IV4dTnTLatpja2u" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-10 py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg transition-all shadow-xl shadow-emerald-600/20 flex items-center justify-center gap-3 active:scale-95"
+              >
+                <Store size={24} />
+                قناة الشروحات (واتساب)
+              </a>
+              <a 
+                href="https://wa.me/201152628515" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-10 py-5 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-lg transition-all border border-white/5 flex items-center justify-center gap-3 active:scale-95"
+              >
+                <PhoneCall size={24} />
+                تواصل مع المبرمج
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Call to Action */}
       <section className="py-32 relative z-10">
         <div className="container mx-auto px-6">
