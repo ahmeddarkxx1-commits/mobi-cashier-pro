@@ -345,17 +345,26 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-white font-['Cairo'] flex flex-col" dir="rtl">
       {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-red-600 rounded-xl shadow-lg shadow-red-500/20"><ShieldCheck size={24} /></div>
-          <div>
-            <h1 className="text-lg font-black">لوحة تحكم السوبر أدمن</h1>
-            <div className="text-[10px] text-red-400 font-bold">SaaS Global Control Panel</div>
+      <header className="bg-slate-900 border-b border-slate-800 px-4 sm:px-6 py-4 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 bg-red-600 rounded-xl shadow-lg shadow-red-500/20 shrink-0">
+              <ShieldCheck size={20} className="sm:w-6 sm:h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg font-black truncate">لوحة تحكم السوبر أدمن</h1>
+              <div className="hidden sm:block text-[10px] text-red-400 font-bold">SaaS Global Control Panel</div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => window.location.reload()} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-blue-400" title="تحديث الصفحة كاملة"><RefreshCw size={18} /></button>
-          <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-red-500 transition-all rounded-xl font-black text-sm"><LogOut size={16} /> خروج</button>
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button onClick={() => window.location.reload()} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors text-blue-400" title="تحديث الصفحة كاملة">
+              <RefreshCw size={16} className="sm:w-4.5 sm:h-4.5" />
+            </button>
+            <button onClick={onLogout} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-800 hover:bg-red-500 transition-all rounded-xl font-black text-[11px] sm:text-sm">
+              <LogOut size={14} className="sm:w-4 sm:h-4" /> 
+              <span>خروج</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -376,40 +385,42 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               </div>
             ))}
           </div>
-          {/* Global Controls */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-               <button onClick={() => setIsNotifyModalOpen(true)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-500/20">
-                <Send size={18} />
-                بث إشعار
-              </button>
-              <button onClick={handleSetGlobalMessage} className="flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-amber-500/20">
-                <Bell size={18} />
-                رسالة هامة (Alert)
-              </button>
-              <button onClick={handleToggleMaintenance} className={`flex items-center gap-2 px-6 py-3 ${maintenanceMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'} rounded-2xl font-black text-sm transition-all`}
-               >
-                 {maintenanceMode ? <CheckCircle size={18} /> : <StopCircle size={18} />}
-                 {maintenanceMode ? 'إلغاء وضع الصيانة' : 'تفعيل وضع الصيانة'}
-               </button>
-            </div>
-            
-            {maintenanceMode && (
-              <div className="bg-amber-500/10 border border-amber-500/30 px-4 py-2 rounded-xl text-amber-400 text-xs font-bold animate-pulse">
-                ⚠️ النظام في وضع الصيانة حالياً
+          {/* Global Controls - Improved for Mobile */}
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div className="grid grid-cols-1 sm:flex sm:items-center gap-3">
+                <button onClick={() => setIsNotifyModalOpen(true)} className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-500/20 text-sm">
+                  <Send size={16} />
+                  بث إشعار
+                </button>
+                <button onClick={handleSetGlobalMessage} className="flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-amber-500/20 text-sm">
+                  <Bell size={16} />
+                  رسالة هامة (Alert)
+                </button>
+                <button onClick={handleToggleMaintenance} className={`flex items-center justify-center gap-2 px-6 py-3 ${maintenanceMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'} rounded-2xl font-black text-sm transition-all`}
+                >
+                  {maintenanceMode ? <CheckCircle size={16} /> : <StopCircle size={16} />}
+                  {maintenanceMode ? 'إلغاء الصيانة' : 'وضع الصيانة'}
+                </button>
               </div>
-            )}
+              
+              {maintenanceMode && (
+                <div className="bg-amber-500/10 border border-amber-500/30 px-4 py-2 rounded-xl text-amber-400 text-[10px] sm:text-xs font-bold animate-pulse text-center">
+                  ⚠️ النظام في وضع الصيانة حالياً
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="ابحث باسم المحل أو البريد..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500"
             />
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition-all whitespace-nowrap">
-              <Plus size={16} /> إضافة محل
+            <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-500 rounded-xl font-black text-sm transition-all whitespace-nowrap">
+              <Plus size={16} /> إضافة محل جديد
             </button>
           </div>
 
@@ -432,7 +443,6 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                   <span className="px-4 py-2 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-black">مدير النظام</span>
                    <span className="px-4 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl text-xs font-black">وصول كامل</span>
                 </div>
               </div>
@@ -450,39 +460,41 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               const users = shopUsers[tenant.id] || [];
 
               return (
-                <div key={tenant.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden transition-all">
+                <div key={tenant.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden transition-all shadow-sm">
                   {/* Main Row */}
-                  <div className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-4">
                     {/* Shop Name + Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Store size={16} className="text-blue-400 shrink-0" />
-                        <span className="font-black text-base truncate">{tenant.name || 'بدون اسم'}</span>
-                        {getStatusBadge(tenant)}
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-400">{tenant.plan || 'BASIC'}</span>
-                        {tenant.duration === '3_days_trial' && <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/10 text-purple-400">تجريبي</span>}
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <Store size={14} className="text-blue-400 shrink-0" />
+                        <span className="font-black text-sm sm:text-base truncate">{tenant.name || 'بدون اسم'}</span>
+                        <div className="flex gap-1 flex-wrap">
+                          {getStatusBadge(tenant)}
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/10 text-blue-400">{tenant.plan || 'BASIC'}</span>
+                          {tenant.duration === '3_days_trial' && <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/10 text-purple-400">تجريبي</span>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-xs text-slate-500 font-bold flex-wrap">
-                        {tenant.owner_email && <span className="flex items-center gap-1"><Mail size={11} />{tenant.owner_email}</span>}
-                        {tenant.owner_phone && <span className="flex items-center gap-1"><Phone size={11} />{tenant.owner_phone}</span>}
+                      <div className="flex flex-col space-y-1 mt-1 text-[11px] text-slate-500 font-bold">
+                        {tenant.owner_email && <span className="flex items-center gap-1.5 truncate"><Mail size={12} className="shrink-0" />{tenant.owner_email}</span>}
+                        {tenant.owner_phone && <span className="flex items-center gap-1.5"><Phone size={12} className="shrink-0" />{tenant.owner_phone}</span>}
                         {tenant.expiry_date && (
-                          <span className={`flex items-center gap-1 ${days !== null && days <= 3 ? 'text-amber-400' : ''}`}>
-                            <Clock size={11} />
+                          <span className={`flex items-center gap-1.5 ${days !== null && days <= 3 ? 'text-amber-400' : ''}`}>
+                            <Clock size={12} className="shrink-0" />
                             {days !== null && days > 0 ? `${days} يوم متبقي` : 'منتهي'} · {new Date(tenant.expiry_date).toLocaleDateString('ar-EG')}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* Actions - Better for Mobile Grid */}
+                    <div className="grid grid-cols-5 sm:flex sm:items-center gap-1.5 sm:gap-2">
                       {tenant.status === 'pending' && (
-                        <button onClick={() => handleActivateTrial(tenant.id)} className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-500 rounded-xl font-black text-xs transition-all">
-                          <Sparkles size={13} /> تفعيل
+                        <button onClick={() => handleActivateTrial(tenant.id)} className="col-span-2 flex items-center justify-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-500 rounded-xl font-black text-[10px] transition-all">
+                          <Sparkles size={12} /> تفعيل
                         </button>
                       )}
-                      <button onClick={() => { setInvitingShop(tenant); setIsInviteModalOpen(true); }} className="flex items-center gap-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl font-black text-xs transition-all" title="دعوة كاشير">
-                        <UserPlus size={13} /> دعوة
+                      <button onClick={() => { setInvitingShop(tenant); setIsInviteModalOpen(true); }} className={`${tenant.status === 'pending' ? 'col-span-3' : 'col-span-5'} sm:col-auto flex items-center justify-center gap-1 px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-xl font-black text-[10px] transition-all`} title="دعوة">
+                        <UserPlus size={12} /> دعوة موظف
                       </button>
                       <button 
                         onClick={() => { 
@@ -494,13 +506,13 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                           }); 
                           setIsSettingsModalOpen(true); 
                         }} 
-                        className="p-2 bg-slate-800 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 rounded-xl transition-colors"
+                        className="p-2.5 bg-slate-800 hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 rounded-xl transition-colors flex items-center justify-center"
                       >
                         <Settings size={16} />
                       </button>
-                      <button onClick={() => handleToggleStatus(tenant.id, tenant.status)} className="p-2 bg-slate-800 hover:bg-amber-500/20 text-amber-400 rounded-xl transition-colors"><StopCircle size={16} /></button>
-                      <button onClick={() => handleDeleteShop(tenant.id, tenant.name)} className="p-2 bg-slate-800 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors"><Trash2 size={16} /></button>
-                      <button onClick={() => toggleExpand(tenant.id)} className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors">
+                      <button onClick={() => handleToggleStatus(tenant.id, tenant.status)} className="p-2.5 bg-slate-800 hover:bg-amber-500/20 text-amber-400 rounded-xl transition-colors flex items-center justify-center"><StopCircle size={16} /></button>
+                      <button onClick={() => handleDeleteShop(tenant.id, tenant.name)} className="p-2.5 bg-slate-800 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors flex items-center justify-center"><Trash2 size={16} /></button>
+                      <button onClick={() => toggleExpand(tenant.id)} className="p-2.5 bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors flex items-center justify-center">
                         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </button>
                     </div>
@@ -565,7 +577,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       {/* Invite Modal */}
       {isInviteModalOpen && invitingShop && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-xl font-black">دعوة كاشير / مدير</h3>
@@ -602,7 +614,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       {/* Add Shop Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-black">إضافة متجر جديد</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 bg-slate-800 rounded-xl"><X size={18} /></button>
@@ -645,7 +657,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       {/* Settings Modal */}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-black">تجديد الاشتراك</h3>
               <button onClick={() => setIsSettingsModalOpen(false)} className="p-2 bg-slate-800 rounded-xl"><X size={18} /></button>
@@ -685,7 +697,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       {/* Broadcast Notification Modal */}
       {isNotifyModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-black flex items-center gap-2">
                 <Send size={20} className="text-blue-400" />
