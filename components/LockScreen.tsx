@@ -163,12 +163,14 @@ const LockScreen: React.FC<LockScreenProps> = ({ message, icon }) => {
           </div>
 
           <div className="space-y-3">
-            <button
-              onClick={() => window.open('https://wa.me/201152628515', '_blank')}
+            <a
+              href={`https://wa.me/201152628515?text=${encodeURIComponent('أهلاً بك، أريد تفعيل حسابي في نظام Mobi Cashier Pro. البريد الإلكتروني: ' + userEmail)}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-green-500/20"
             >
-              <MessageCircle size={24} /> تواصل مع الإدارة الآن
-            </button>
+              <MessageCircle size={24} /> تواصل مع الإدارة لتفعيل الحساب
+            </a>
 
             <div className="grid grid-cols-2 gap-3">
               <button
