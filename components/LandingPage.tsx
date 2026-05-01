@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Smartphone, ShieldCheck, Zap, BarChart3, Users, Star, ArrowLeft, CheckCircle2, Layout, Database, Wrench, Wallet, PhoneCall, Globe, ArrowRight, Download, CreditCard, Sparkles, TrendingUp, MessageCircle } from 'lucide-react';
+import { Smartphone, ShieldCheck, Zap, BarChart3, Users, Star, ArrowLeft, CheckCircle2, Layout, Database, Wrench, Wallet, PhoneCall, Globe, ArrowRight, Download, CreditCard, Sparkles, TrendingUp, MessageCircle, Store } from 'lucide-react';
 
 interface LandingPageProps {
   onSelectPlan: (plan: 'BASIC' | 'PRO' | 'BUSINESS', duration: '1' | '3' | '12') => void;
