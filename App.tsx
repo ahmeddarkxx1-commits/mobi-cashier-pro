@@ -371,20 +371,7 @@ const App: React.FC = () => {
     }
   };
 
-  // التأكد من عدم التعليق في شاشة التحميل للأبد
-  useEffect(() => {
-    if (loading && session) {
-      const timer = setTimeout(() => {
-        if (loading) {
-          console.log("Timeout reached, forcing lock screen for safety");
-          setLoading(false);
-          setIsLocked(true);
-          setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, session]);
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

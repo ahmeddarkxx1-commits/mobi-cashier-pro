@@ -162,16 +162,16 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   };
 
   return (
-    <div className="relative h-full space-y-6 font-['Cairo']">
+    <div className="relative h-full space-y-6 font-['Cairo'] w-full max-w-full overflow-x-hidden">
       {/* Tab Switcher */}
-      <div className="flex bg-white dark:bg-slate-900 p-2 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-2 transition-colors duration-300">
+      <div className="flex bg-white dark:bg-slate-900 p-1.5 sm:p-2 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-1 sm:gap-2 transition-colors duration-300">
         <button
           onClick={() => setActiveTab('goods')}
           className={`flex items-center gap-2 px-8 py-4 rounded-2xl text-sm font-black transition-all whitespace-nowrap ${
             activeTab === 'goods' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <Package size={20} />
+          <Package size={18} className="sm:w-5 sm:h-5" />
           بيع بضاعة
         </button>
 
@@ -232,11 +232,11 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
             />
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
             {filteredProducts.map(p => (
               <div
                 key={p.id}
-                className="bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all text-right flex flex-col gap-4 relative group"
+                className="bg-white dark:bg-slate-900 p-3 sm:p-5 rounded-3xl sm:rounded-[2.5rem] border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all text-right flex flex-col gap-2 sm:gap-4 relative group"
               >
                 {/* Thumbnail */}
                 <div className="aspect-square w-full">

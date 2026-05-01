@@ -539,7 +539,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 no-scrollbar">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 no-scrollbar">
           <div className="max-w-6xl mx-auto pb-20 lg:pb-0">
             {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} />}
             {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} />}

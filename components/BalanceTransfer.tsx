@@ -70,7 +70,7 @@ const BalanceTransfer: React.FC<BalanceTransferProps> = ({ settings, addTransact
   return (
     <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-6">
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
+        <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-gray-100">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
@@ -226,7 +226,7 @@ const BalanceTransfer: React.FC<BalanceTransferProps> = ({ settings, addTransact
       </div>
 
       <div className="space-y-6">
-        <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl h-full flex flex-col">
+        <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl h-full flex flex-col">
           <h4 className="font-bold text-lg mb-6 flex items-center gap-2">
             <Settings size={20} className="text-blue-400" />
             نظام العمولات المطبق

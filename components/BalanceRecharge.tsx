@@ -102,7 +102,7 @@ const BalanceRecharge: React.FC<BalanceRechargeProps> = ({ addTransaction, setti
   }, [sellingPrice, costPrice]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-24">
+    <div className="max-w-4xl mx-auto space-y-6 pb-24 w-full overflow-x-hidden">
       <div className="flex bg-white p-2 rounded-3xl shadow-sm border border-gray-100 overflow-x-auto no-scrollbar gap-2">
         {operators.map(op => (
           <button
@@ -133,7 +133,7 @@ const BalanceRecharge: React.FC<BalanceRechargeProps> = ({ addTransaction, setti
           ))}
         </div>
 
-        <div className="p-6 sm:p-8 space-y-8">
+        <div className="p-4 sm:p-8 space-y-8">
           {activeCat === 'faka' && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="text-xs font-black text-gray-400 px-1 uppercase flex items-center gap-2">
@@ -233,7 +233,7 @@ const BalanceRecharge: React.FC<BalanceRechargeProps> = ({ addTransaction, setti
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <div className="space-y-2">
                    <label className="text-xs font-black text-gray-400 pr-1">سعر التكلفة (عليك)</label>
                    <div className="relative">
