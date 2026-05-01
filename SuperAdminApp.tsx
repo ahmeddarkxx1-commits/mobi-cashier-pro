@@ -32,13 +32,44 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     });
     fetchTenants();
     fetchAppConfig();
+
+    // Notification Permission
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     const channel = supabase.channel('admin_realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shops' }, (payload) => {
+        if (payload.new.status === 'pending') {
+          playNotificationSound();
+          showPushNotification(payload.new.name);
+        }
+        fetchTenants();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, fetchTenants)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchTenants)
       .subscribe();
     const interval = setInterval(fetchTenants, 15000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, []);
+
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.play();
+    } catch (e) {
+      console.error('Audio play failed:', e);
+    }
+  };
+
+  const showPushNotification = (shopName: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("طلب تفعيل جديد 🏪", {
+        body: `المحل "${shopName}" بانتظار المراجعة الآن.`,
+        icon: '/favicon.ico'
+      });
+    }
+  };
 
   const fetchAppConfig = async () => {
     const { data } = await supabase.from('app_config').select('*').limit(1).maybeSingle();
