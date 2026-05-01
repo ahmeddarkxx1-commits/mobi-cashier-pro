@@ -30,25 +30,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-600 rounded-xl shadow-sm">
-              <Smartphone size={20} className="text-white" />
+        <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="p-2 bg-emerald-600 rounded-xl shadow-sm shrink-0">
+              <Smartphone size={18} className="text-white" />
             </div>
-            <span className="text-xl font-black tracking-tight text-white font-sans">Mobi Cashier Pro</span>
+            <span className="text-base sm:text-xl font-black tracking-tight text-white font-sans truncate">Mobi Cashier Pro</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-400">
-            <a href="#features" className="hover:text-emerald-400 transition-colors">المميزات</a>
-            <a href="#pricing" className="hover:text-emerald-400 transition-colors">الأسعار</a>
-            <a href="#about" className="hover:text-emerald-400 transition-colors">عن النظام</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <button onClick={onLogin} className="text-sm font-black text-slate-300 hover:text-white transition-colors px-4 py-2">
+          
+          <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+            <button onClick={onLogin} className="text-xs sm:text-sm font-black text-slate-300 hover:text-white transition-colors px-2 sm:px-4 py-2">
               دخول
             </button>
             <button 
               onClick={onLogin} 
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-6 py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] sm:text-xs font-black px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 whitespace-nowrap"
             >
               اشترك الآن
             </button>
@@ -91,23 +87,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
       </header>
 
       {/* Stats Section */}
-      <section className="py-20 z-10 relative border-y border-white/5 bg-slate-900/20 backdrop-blur-sm">
-        <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 text-center">
+      <section className="py-12 sm:py-20 z-10 relative border-y border-white/5 bg-slate-900/20 backdrop-blur-sm">
+        <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12 text-center">
           <div>
-            <div className="text-4xl md:text-5xl font-black text-emerald-500 mb-2">+1500</div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">محل مشترك</div>
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-emerald-500 mb-2">+1500</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">محل مشترك</div>
           </div>
           <div>
-            <div className="text-4xl md:text-5xl font-black text-indigo-500 mb-2">+10M</div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">عملية بيع</div>
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-indigo-500 mb-2">+10M</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">عملية بيع</div>
           </div>
           <div>
-            <div className="text-4xl md:text-5xl font-black text-cyan-500 mb-2">99.9%</div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">وقت التشغيل</div>
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-cyan-500 mb-2">99.9%</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">وقت التشغيل</div>
           </div>
           <div>
-            <div className="text-4xl md:text-5xl font-black text-purple-500 mb-2">24/7</div>
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">دعم فني</div>
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-purple-500 mb-2">24/7</div>
+            <div className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest">دعم فني</div>
           </div>
         </div>
       </section>
@@ -174,11 +170,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
             <h2 className="text-4xl md:text-5xl font-black mb-6">باقات مرنة لكل <span className="text-indigo-500">طموح</span></h2>
             <p className="text-slate-400 text-lg mb-12">ابدأ بالباقة اللي تناسب حجم محلك النهاردة، واكبر معانا بكرة.</p>
             
-            {/* Custom Billing Toggle */}
-            <div className="inline-flex items-center p-1.5 bg-slate-950 rounded-2xl border border-white/5 mb-10 shadow-inner">
-              <button onClick={() => setBillingCycle('1')} className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${billingCycle === '1' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>شهري</button>
-              <button onClick={() => setBillingCycle('3')} className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${billingCycle === '3' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>3 شهور <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-md mr-2">وفر 10%</span></button>
-              <button onClick={() => setBillingCycle('12')} className={`px-8 py-3 rounded-xl text-sm font-black transition-all ${billingCycle === '12' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-white'}`}>سنوي <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md mr-2">شهرين هدية</span></button>
+            {/* Custom Billing Toggle - Improved for Mobile */}
+            <div className="flex justify-center mb-10 overflow-x-auto no-scrollbar max-w-full px-4">
+              <div className="inline-flex items-center p-1 bg-slate-950 rounded-2xl border border-white/5 shadow-inner whitespace-nowrap">
+                <button onClick={() => setBillingCycle('1')} className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all ${billingCycle === '1' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>شهري</button>
+                <button onClick={() => setBillingCycle('3')} className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all ${billingCycle === '3' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+                  3 شهور 
+                  <span className={`text-[8px] sm:text-[10px] px-1.5 py-0.5 rounded-md mr-1.5 ${billingCycle === '3' ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-500'}`}>وفر 10%</span>
+                </button>
+                <button onClick={() => setBillingCycle('12')} className={`px-5 sm:px-8 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-black transition-all ${billingCycle === '12' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+                  سنوي 
+                  <span className={`text-[8px] sm:text-[10px] px-1.5 py-0.5 rounded-md mr-1.5 ${billingCycle === '12' ? 'bg-white/20 text-white' : 'bg-amber-500/20 text-amber-400'}`}>هدية🎁</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -301,33 +305,33 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
 };
 
 const FeatureCard = ({ icon, title, desc, gradient, iconColor }: any) => (
-  <div className="group bg-slate-900/40 border border-white/5 p-10 rounded-[2.5rem] hover:bg-slate-800/60 transition-all hover:-translate-y-2 relative overflow-hidden backdrop-blur-sm">
+  <div className="group bg-slate-900/40 border border-white/5 p-6 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] hover:bg-slate-800/60 transition-all hover:-translate-y-2 relative overflow-hidden backdrop-blur-sm">
     <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
-    <div className={`w-14 h-14 rounded-2xl bg-slate-950 flex items-center justify-center mb-8 relative z-10 ${iconColor} group-hover:scale-110 transition-transform shadow-xl`}>
+    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950 flex items-center justify-center mb-6 sm:mb-8 relative z-10 ${iconColor} group-hover:scale-110 transition-transform shadow-xl`}>
       {icon}
     </div>
-    <h3 className="text-2xl font-black mb-4 relative z-10 text-white">{title}</h3>
-    <p className="text-slate-400 leading-relaxed font-bold relative z-10 group-hover:text-slate-300 transition-colors">{desc}</p>
+    <h3 className="text-xl sm:text-2xl font-black mb-4 relative z-10 text-white">{title}</h3>
+    <p className="text-sm sm:text-base text-slate-400 leading-relaxed font-bold relative z-10 group-hover:text-slate-300 transition-colors">{desc}</p>
   </div>
 );
 
 const PricingCard = ({ title, price, oldPrice, cycle, desc, features, buttonText, highlighted, onAction, icon }: any) => (
-  <div className={`relative flex flex-col p-10 rounded-[3rem] transition-all hover:scale-[1.02] ${
+  <div className={`relative flex flex-col p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] transition-all hover:scale-[1.02] ${
     highlighted 
     ? 'bg-gradient-to-b from-emerald-600 to-teal-900 text-white shadow-2xl shadow-emerald-600/30 z-10 border border-emerald-400/30' 
     : 'bg-slate-900/50 text-slate-300 border border-white/5'
   }`}>
     {highlighted && (
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-2 rounded-full text-xs font-black shadow-xl tracking-widest uppercase">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-6 py-2 rounded-full text-[10px] font-black shadow-xl tracking-widest uppercase">
         القيمة الأفضل
       </div>
     )}
     
-    <div className="flex items-center justify-between mb-8">
-      <div className={`p-4 rounded-2xl ${highlighted ? 'bg-white/10' : 'bg-slate-950'}`}>
-        {icon}
+    <div className="flex items-center justify-between mb-6 sm:mb-8">
+      <div className={`p-3 sm:p-4 rounded-2xl ${highlighted ? 'bg-white/10' : 'bg-slate-950'}`}>
+        {React.cloneElement(icon as React.ReactElement, { size: 20 })}
       </div>
-      <span className={`text-xs font-black uppercase tracking-widest ${highlighted ? 'text-emerald-100' : 'text-slate-500'}`}>{title}</span>
+      <span className={`text-[10px] font-black uppercase tracking-widest ${highlighted ? 'text-emerald-100' : 'text-slate-500'}`}>{title}</span>
     </div>
 
     <div className="mb-4 flex flex-col gap-1">
