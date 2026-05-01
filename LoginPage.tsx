@@ -160,8 +160,32 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-slate-800/50 text-center">
-            <p className="text-slate-500 text-xs font-bold mb-4">
+          <div className="mt-10 pt-8 border-t border-slate-800/50">
+            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 text-center space-y-4">
+              <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest">مركز الدعم والإرشاد</h4>
+              <p className="text-sm text-slate-300 font-bold leading-relaxed">تائه أو تواجه مشكلة؟ انضم لقناتنا الرسمية لمتابعة الشروحات أو تواصل معنا مباشرة</p>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a 
+                  href="https://whatsapp.com/channel/0029VbDO2IV4dTnTLatpja2u" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 py-3 rounded-2xl font-black text-xs transition-all border border-emerald-600/20"
+                >
+                  <Store size={16} /> تابع القناة
+                </a>
+                <a 
+                  href="https://wa.me/201152628515" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 py-3 rounded-2xl font-black text-xs transition-all border border-blue-600/20"
+                >
+                  <Mail size={16} /> تواصل مع الدعم
+                </a>
+              </div>
+            </div>
+
+            <p className="text-slate-500 text-xs font-bold mt-6 mb-4 text-center">
               {isSignUp ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟'}
               <button 
                 type="button" 
@@ -171,14 +195,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 {isSignUp ? 'سجل دخولك' : 'إنشاء حساب جديد'}
               </button>
             </p>
-            <div className="flex justify-center gap-4">
-              <div className="p-3 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer">
-                <Store size={20} />
-              </div>
-              <div className="p-3 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer">
-                <ShieldCheck size={20} />
-              </div>
-            </div>
           </div>
         </div>
 
