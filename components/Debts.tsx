@@ -18,6 +18,7 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
   const [newDebt, setNewDebt] = useState({ customerName: '', customerPhone: '', amount: 0, description: '' });
   const [settleModal, setSettleModal] = useState<{isOpen: boolean, debt: Debt | null}>({isOpen: false, debt: null});
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, debtId: string | null}>({isOpen: false, debtId: null});
 
   useEffect(() => {
     if (!shopId) return;
@@ -106,8 +107,9 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
     }
   };
 
-  const handleDeleteDebt = async (id: string) => {
-    if (!window.confirm('متأكد إنك عاوز تمسح المديونية دي نهائياً؟')) return;
+  const handleDeleteDebt = async () => {
+    const id = deleteModal.debtId;
+    if (!id) return;
     
     const { success, error } = await deleteDebt(id);
     if (success) {
@@ -117,6 +119,7 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
       console.error('Delete error:', error);
       toast.error('فشل حذف المديونية من السحابة');
     }
+    setDeleteModal({ isOpen: false, debtId: null });
   };
 
   const filteredDebts = debts.filter(d => 
@@ -240,7 +243,7 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
                         {debt.remainingAmount > 0 && (
                           <button onClick={() => handleSettleClick(debt)} title="استلام دفعة / سداد الدين" className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Banknote size={18}/></button>
                         )}
-                        <button onClick={() => handleDeleteDebt(debt.id)} title="حذف المديونية" className="p-3 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>
+                        <button onClick={() => setDeleteModal({ isOpen: true, debtId: debt.id })} title="حذف المديونية" className="p-3 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>
                       </div>
                     </td>
                   </tr>
@@ -311,6 +314,34 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
             
             <button type="submit" className="w-full bg-green-600 text-white rounded-2xl font-black py-5 shadow-xl text-lg hover:bg-green-700 active:scale-95 transition-all">تأكيد السداد وإضافة للخزنة</button>
           </form>
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm p-8 rounded-[2.5rem] shadow-2xl space-y-6 text-center border border-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto text-red-500">
+              <AlertCircle size={40} />
+            </div>
+            <div>
+              <h4 className="text-xl font-black text-slate-900">حذف المديونية؟</h4>
+              <p className="text-slate-500 font-bold text-sm mt-2">متأكد إنك عاوز تمسح المديونية دي؟ مش هتعرف ترجعها تاني يا عالمي.</p>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleDeleteDebt}
+                className="flex-1 bg-red-500 text-white font-black py-4 rounded-2xl hover:bg-red-600 transition-all active:scale-95"
+              >
+                أيوه، امسح
+              </button>
+              <button 
+                onClick={() => setDeleteModal({ isOpen: false, debtId: null })}
+                className="flex-1 bg-slate-100 text-slate-600 font-black py-4 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
+              >
+                لا، لغى
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
