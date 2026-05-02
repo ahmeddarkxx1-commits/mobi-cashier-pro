@@ -138,24 +138,47 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
 
   const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !confirm('سيتم دمج البيانات، استمرار؟')) return;
+    if (!file || !confirm('⚠️ تحذير: سيتم دمج البيانات من الملف مع البيانات الحالية. هل تريد الاستمرار؟')) return;
+    
     setIsRestoring(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const backup = JSON.parse(event.target?.result as string);
         const { data } = backup;
-        const clean = (arr: any[]) => arr.map(({ id, created_at, ...rest }) => ({ ...rest, tenant_id: shopId }));
-        await Promise.all([
-          data.products.length > 0 && supabase.from('products').insert(clean(data.products)),
-          data.transactions.length > 0 && supabase.from('transactions').insert(clean(data.transactions)),
-          data.maintenance.length > 0 && supabase.from('maintenance_jobs').insert(clean(data.maintenance)),
-          data.expenses.length > 0 && supabase.from('expenses').insert(clean(data.expenses)),
-          data.debts.length > 0 && supabase.from('debts').insert(clean(data.debts)),
+        
+        if (!data) throw new Error('الملف لا يحتوي على بيانات صحيحة');
+
+        const clean = (arr: any[]) => {
+          if (!arr || !Array.isArray(arr)) return [];
+          return arr.map(({ id, created_at, ...rest }) => ({ 
+            ...rest, 
+            tenant_id: shopId 
+          }));
+        };
+
+        const results = await Promise.all([
+          data.products?.length > 0 ? supabase.from('products').insert(clean(data.products)) : Promise.resolve({ error: null }),
+          data.transactions?.length > 0 ? supabase.from('transactions').insert(clean(data.transactions)) : Promise.resolve({ error: null }),
+          data.maintenance?.length > 0 ? supabase.from('maintenance_jobs').insert(clean(data.maintenance)) : Promise.resolve({ error: null }),
+          data.expenses?.length > 0 ? supabase.from('expenses').insert(clean(data.expenses)) : Promise.resolve({ error: null }),
+          data.debts?.length > 0 ? supabase.from('debts').insert(clean(data.debts)) : Promise.resolve({ error: null }),
         ]);
-        alert('✅ تم الاستعادة!');
-        window.location.reload();
-      } catch (err) { alert('❌ ملف غير صحيح'); } finally { setIsRestoring(false); }
+
+        const errors = results.filter(r => r.error).map(r => r.error?.message);
+        
+        if (errors.length > 0) {
+          console.error('Import Errors:', errors);
+          alert('❌ حدثت بعض الأخطاء أثناء الاستعادة:\n' + errors.join('\n'));
+        } else {
+          alert('✅ تم استعادة البيانات بنجاح!\nالمخزن: ' + (data.products?.length || 0) + '\nالمعاملات: ' + (data.transactions?.length || 0) + '\nالصيانة: ' + (data.maintenance?.length || 0));
+          window.location.reload();
+        }
+      } catch (err: any) { 
+        alert('❌ خطأ في قراءة الملف: ' + err.message); 
+      } finally { 
+        setIsRestoring(false); 
+      }
     };
     reader.readAsText(file);
   };
