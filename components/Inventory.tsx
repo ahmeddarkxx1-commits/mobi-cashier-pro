@@ -20,6 +20,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: 0,
+    wholesale_price: 0,
     cost: 0,
     category: 'accessory' as Product['category'],
     stock: 0
@@ -76,7 +77,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         }
       }
       setIsAdding(false);
-      setNewProduct({ name: '', price: 0, cost: 0, category: 'accessory', stock: 0 });
+      setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0 });
     } catch (err) {
       console.error('Error saving product:', err);
       alert('حصل مشكلة في الحفظ، بس ضفناهولك مؤقتاً في الصفحة.');
@@ -86,7 +87,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   };
 
   const startEdit = (product: Product) => {
-    setNewProduct({ name: product.name, price: product.price, cost: product.cost, category: product.category, stock: product.stock });
+    setNewProduct({ name: product.name, price: product.price, wholesale_price: product.wholesalePrice || 0, cost: product.cost, category: product.category, stock: product.stock });
     setEditingId(product.id);
     setIsAdding(true);
   };
@@ -119,7 +120,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
           </div>
         </div>
         <button 
-          onClick={() => { setIsAdding(!isAdding); setEditingId(null); setNewProduct({name:'', price:0, cost:0, category:'accessory', stock:0}); }}
+          onClick={() => { setIsAdding(!isAdding); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0}); }}
           className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl w-full md:w-auto active:scale-95 transition-all"
         >
           <Plus size={20} />
@@ -139,7 +140,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                 <input type="number" placeholder="0" required className="w-full p-4 rounded-2xl border bg-slate-50 dark:bg-slate-800 text-right font-bold transition-colors duration-300" value={newProduct.cost || ''} onChange={e => setNewProduct({...newProduct, cost: Number(e.target.value)})} />
               </div>
               <div className="space-y-1 text-right">
-                <label className="text-[10px] font-black text-gray-400 px-1 uppercase">هبيعه بكام؟</label>
+                <label className="text-[10px] font-black text-gray-400 px-1 uppercase">سعر المحلات (جملة)</label>
+                <input type="number" placeholder="0" required className="w-full p-4 rounded-2xl border bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-bold transition-colors duration-300" value={newProduct.wholesale_price || ''} onChange={e => setNewProduct({...newProduct, wholesale_price: Number(e.target.value)})} />
+              </div>
+              <div className="space-y-1 text-right">
+                <label className="text-[10px] font-black text-gray-400 px-1 uppercase">هبيعه بكام زبون؟</label>
                 <input type="number" placeholder="0" required className="w-full p-4 rounded-2xl border bg-slate-50 dark:bg-slate-800 text-right font-bold transition-colors duration-300" value={newProduct.price || ''} onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} />
               </div>
                     <div className="space-y-2">
@@ -209,7 +214,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                     </span>
                   </td>
                   <td className="p-5 text-center text-gray-400">{product.cost} ج</td>
-                  <td className="p-5 text-center text-indigo-600">{product.price} ج</td>
+                  <td className="p-5 text-center">
+                    <div className="text-indigo-600">{product.price} ج</div>
+                    <div className="text-[10px] text-blue-500 font-black">جملة: {product.wholesalePrice || 0} ج</div>
+                  </td>
                   <td className="p-5 text-center">
                     <span className={`px-3 py-1 rounded-full text-[11px] ${product.stock < 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
                       {product.stock} حتة

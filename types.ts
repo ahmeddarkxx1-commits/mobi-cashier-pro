@@ -41,6 +41,7 @@ export interface Product {
   id: string;
   name: string;
   price: number; 
+  wholesalePrice: number;
   cost: number;  
   category: 'phone' | 'charger' | 'cable' | 'wired_earphone' | 'bluetooth_earphone' | 'headphone' | 'accessory' | 'part' | 'electronic';
   stock: number;
