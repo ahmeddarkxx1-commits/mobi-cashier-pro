@@ -19,6 +19,7 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
   const [settleModal, setSettleModal] = useState<{isOpen: boolean, debt: Debt | null}>({isOpen: false, debt: null});
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, debtId: string | null}>({isOpen: false, debtId: null});
+  const [viewModal, setViewModal] = useState<{isOpen: boolean, debt: Debt | null}>({isOpen: false, debt: null});
 
   useEffect(() => {
     if (!shopId) return;
@@ -217,9 +218,25 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
                 filteredDebts.map(debt => (
                   <tr key={debt.id} className="hover:bg-gray-50/80 transition-colors group">
                     <td className="px-8 py-6">
-                      <div className="font-black text-gray-800">{debt.customerName}</div>
-                      <div className="text-[11px] font-bold text-blue-600 mt-1">{debt.description || 'لا يوجد بيان'}</div>
-                      <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-1"><Phone size={12}/> {debt.customerPhone || 'بدون رقم'}</div>
+                      <div 
+                        className="cursor-pointer group-hover:translate-x-[-5px] transition-transform"
+                        onClick={() => setViewModal({ isOpen: true, debt })}
+                      >
+                        <div className="font-black text-gray-800 text-lg hover:text-blue-600 transition-colors">{debt.customerName}</div>
+                        <div className="text-[11px] font-bold text-blue-600 mt-1 line-clamp-1">{debt.description || 'لا يوجد بيان'}</div>
+                      </div>
+                      {debt.customerPhone ? (
+                        <a 
+                          href={`tel:${debt.customerPhone}`}
+                          className="text-[11px] text-gray-400 hover:text-green-600 flex items-center gap-1 mt-1 font-bold transition-colors w-fit"
+                        >
+                          <Phone size={12}/> {debt.customerPhone}
+                        </a>
+                      ) : (
+                        <div className="text-[10px] text-gray-300 flex items-center gap-1 mt-1 font-bold">
+                          <Phone size={12}/> بدون رقم
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-6 text-gray-500 font-bold text-sm">
                        <div className="flex items-center gap-2"><Calendar size={14}/> {new Date(debt.date).toLocaleDateString('ar-EG')}</div>
@@ -316,6 +333,60 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
           </form>
         </div>
       )}
+      {/* View Debt Details Modal */}
+      {viewModal.isOpen && viewModal.debt && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl space-y-6 relative border border-slate-100 animate-in zoom-in-95 duration-200 text-right">
+            <button onClick={() => setViewModal({isOpen: false, debt: null})} className="absolute top-6 left-6 text-slate-400 hover:text-red-500"><X size={24}/></button>
+            
+            <div className="flex flex-col items-center gap-4 pb-4 border-b border-slate-100">
+               <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 shadow-inner">
+                  <UserPlus size={40} />
+               </div>
+               <h3 className="text-2xl font-black text-slate-900">{viewModal.debt.customerName}</h3>
+            </div>
+
+            <div className="space-y-4">
+               <div className="bg-slate-50 p-4 rounded-2xl space-y-1">
+                  <div className="text-[10px] font-black text-gray-400 uppercase">رقم التليفون</div>
+                  {viewModal.debt.customerPhone ? (
+                    <a href={`tel:${viewModal.debt.customerPhone}`} className="text-lg font-black text-blue-600 flex items-center justify-end gap-2">
+                       {viewModal.debt.customerPhone} <Phone size={18} />
+                    </a>
+                  ) : <div className="text-lg font-black text-gray-400">لا يوجد رقم</div>}
+               </div>
+
+               <div className="bg-slate-50 p-4 rounded-2xl space-y-1">
+                  <div className="text-[10px] font-black text-gray-400 uppercase">بيان المديونية</div>
+                  <div className="text-base font-bold text-slate-700">{viewModal.debt.description || 'لا يوجد تفاصيل إضافية'}</div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                     <div className="text-[10px] font-black text-gray-400 uppercase">إجمالي الدين</div>
+                     <div className="text-xl font-black text-slate-900">{viewModal.debt.amount.toLocaleString()} ج</div>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-2xl">
+                     <div className="text-[10px] font-black text-red-400 uppercase">المتبقي حالياً</div>
+                     <div className="text-xl font-black text-red-600">{viewModal.debt.remainingAmount.toLocaleString()} ج</div>
+                  </div>
+               </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                const d = viewModal.debt;
+                setViewModal({isOpen: false, debt: null});
+                if (d) handleSettleClick(d);
+              }}
+              className="w-full bg-slate-900 text-white font-black py-5 rounded-2xl shadow-xl hover:bg-blue-600 transition-all active:scale-95"
+            >
+              تسوية مبالغ / استلام نقدية
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70] flex items-center justify-center p-4">
