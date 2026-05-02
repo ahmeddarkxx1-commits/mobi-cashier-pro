@@ -75,7 +75,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       return;
     }
     
-    const price = isWholesale ? (part.wholesalePrice || part.price) : part.price;
+    const price = isWholesale ? (part.wholesale_price || part.price) : part.price;
     const newPartsUsed = job.partsUsed ? `${job.partsUsed}, ${part.name}` : part.name;
     try {
       await updateMaintenanceJob(jobId, { 
@@ -421,7 +421,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                     >
                                       <option value="">-- اختار واخصم من المخزن --</option>
                                       {maintenanceParts.map(part => (
-                                        <option key={part.id} value={part.id}>{part.name} (باقي {part.stock})</option>
+                                        <option key={part.id} value={part.id}>{part.name} (باقي {part.stock}) - جملة: {part.wholesale_price || 0} ج</option>
                                       ))}
                                     </select>
                                   </div>
@@ -475,16 +475,35 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                       const pid = e.target.value;
                       setSelectedPartId(pid);
                       const part = products.find(p => p.id === pid);
-                      if (part) setPartsSalePrice(part.wholesalePrice || part.price);
+                      if (part) setPartsSalePrice(part.wholesale_price || part.price);
                     }}
                   >
                     <option value="">-- اختر من المخزن --</option>
                     {products.filter(p => p.category === 'part' || p.category === 'accessory').map(item => (
                       <option key={item.id} value={item.id}>
-                        {item.name} ({item.stock} حتة) - تكلفة: {item.cost} ج
+                        {item.name} ({item.stock} حتة) - جملة: {item.wholesale_price || 0} ج | قطاعي: {item.price} ج
                       </option>
                     ))}
                   </select>
+               </div>
+
+               <div className="flex gap-2">
+                   <button 
+                     type="button"
+                     onClick={() => {
+                        const p = products.find(x => x.id === selectedPartId);
+                        if (p) setPartsSalePrice(p.wholesale_price || 0);
+                     }}
+                     className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200"
+                   >سعر المحلات</button>
+                   <button 
+                     type="button"
+                     onClick={() => {
+                        const p = products.find(x => x.id === selectedPartId);
+                        if (p) setPartsSalePrice(p.price);
+                     }}
+                     className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200"
+                   >سعر الزبون</button>
                </div>
 
                <div className="space-y-2">
