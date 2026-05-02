@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Search, UserPlus, Phone, Calendar, Banknote, CheckCircle2, AlertCircle, Clock, Trash2, Filter, X } from 'lucide-react';
 import { Debt } from '../types';
 import { supabase } from '../supabaseClient';
-import { createDebt } from '../supabaseHelpers';
+import { createDebt, deleteDebt } from '../supabaseHelpers';
 
 interface DebtsProps {
   shopId: string | null;
@@ -102,6 +103,19 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
     } catch (err) {
       console.error(err);
       alert('حدث خطأ أثناء السداد.');
+    }
+  };
+
+  const handleDeleteDebt = async (id: string) => {
+    if (!window.confirm('متأكد إنك عاوز تمسح المديونية دي نهائياً؟')) return;
+    
+    const { success, error } = await deleteDebt(id);
+    if (success) {
+      setDebts(prev => prev.filter(d => d.id !== id));
+      toast.success('تم حذف المديونية بنجاح');
+    } else {
+      console.error('Delete error:', error);
+      toast.error('فشل حذف المديونية من السحابة');
     }
   };
 
@@ -226,7 +240,7 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
                         {debt.remainingAmount > 0 && (
                           <button onClick={() => handleSettleClick(debt)} title="استلام دفعة / سداد الدين" className="p-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Banknote size={18}/></button>
                         )}
-                        <button className="p-3 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>
+                        <button onClick={() => handleDeleteDebt(debt.id)} title="حذف المديونية" className="p-3 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18}/></button>
                       </div>
                     </td>
                   </tr>

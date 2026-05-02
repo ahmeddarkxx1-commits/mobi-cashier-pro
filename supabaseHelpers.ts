@@ -58,3 +58,14 @@ export const createDebt = async (debt: Omit<Debt, 'id'>, shopId: string) => {
   }
   return { data, error: null };
 };
+export const deleteDebt = async (id: string) => {
+  const { error } = await supabase
+    .from('debts')
+    .delete()
+    .eq('id', id);
+  if (error) {
+    console.error('Error deleting debt:', error);
+    return { success: false, error };
+  }
+  return { success: true };
+};
