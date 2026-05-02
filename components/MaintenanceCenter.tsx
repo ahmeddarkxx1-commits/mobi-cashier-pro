@@ -63,6 +63,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const [checkoutPayments, setCheckoutPayments] = useState<Record<string, string>>({});
   const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
   const [isWholesale, setIsWholesale] = useState(false);
+  const [partsSearchTerm, setPartsSearchTerm] = useState('');
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
 
@@ -99,6 +100,13 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   
   const readyToDeliver = useMemo(() => jobs.filter(j => j.status === 'completed'), [jobs]);
   const activeJobs = useMemo(() => jobs.filter(j => j.status !== 'delivered'), [jobs]);
+
+  const filteredPartsForSale = useMemo(() => {
+    return products.filter(p => 
+      (p.category === 'part' || p.category === 'accessory') &&
+      p.name.toLowerCase().includes(partsSearchTerm.toLowerCase())
+    );
+  }, [products, partsSearchTerm]);
 
   const addNotification = (message: string, type: Notification['type'] = 'info') => {
     if (type === 'success') toast.success(message);
@@ -485,26 +493,68 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
             </div>
 
             <div className="space-y-6">
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase">اختر قطعة الغيار</label>
-                  <select 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 dark:bg-slate-800 font-black text-right outline-none focus:border-blue-500 transition-all"
-                    value={selectedPartId}
-                    onChange={(e) => {
-                      const pid = e.target.value;
-                      setSelectedPartId(pid);
-                      const part = products.find(p => p.id === pid);
-                      if (part) setPartsSalePrice(part.wholesale_price || part.price);
-                    }}
-                  >
-                    <option value="">-- اختر من المخزن --</option>
-                    {products.filter(p => p.category === 'part' || p.category === 'accessory').map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} ({item.stock} حتة) - جملة: {item.wholesale_price || 0} ج | قطاعي: {item.price} ج
-                      </option>
-                    ))}
-                  </select>
-               </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase flex items-center justify-between">
+                    <span>ابحث عن اسم القطعة</span>
+                    <Package size={12} />
+                  </label>
+                  
+                  <div className="relative group">
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                    <input 
+                      type="text"
+                      placeholder="اكتب اسم الشاشة أو البطارية..."
+                      className="w-full pr-12 pl-4 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 font-bold text-right outline-none focus:border-blue-500 transition-all shadow-sm"
+                      value={partsSearchTerm}
+                      onChange={(e) => setPartsSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto no-scrollbar border-2 border-slate-50 dark:border-slate-800 rounded-2xl p-2 bg-slate-50/50 dark:bg-slate-900/50">
+                    {filteredPartsForSale.length === 0 ? (
+                      <div className="py-4 text-center text-xs font-bold text-slate-400">مفيش نتائج للبحث ده..</div>
+                    ) : (
+                      filteredPartsForSale.map(item => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPartId(item.id);
+                            setPartsSalePrice(item.wholesale_price || item.price);
+                            setPartsSearchTerm(''); // Clear search after selection
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-xl transition-all text-right border ${
+                            selectedPartId === item.id 
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-[1.02]' 
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:border-blue-400'
+                          }`}
+                        >
+                          <div className="flex flex-col items-end">
+                            <span className="font-black text-sm">{item.name}</span>
+                            <span className={`text-[10px] font-bold ${selectedPartId === item.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                              متاح: {item.stock} حتة | جملة: {item.wholesale_price || 0} ج
+                            </span>
+                          </div>
+                          {selectedPartId === item.id && <CheckCircle2 size={18} />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {selectedPartId && (
+                  <div className="animate-in zoom-in-95 duration-300">
+                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-center justify-between gap-4">
+                      <button onClick={() => setSelectedPartId('')} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                        <X size={20} />
+                      </button>
+                      <div className="text-right">
+                        <div className="text-[10px] font-black text-blue-600 uppercase">القطعة المختارة حالياً:</div>
+                        <div className="font-black text-slate-800 dark:text-white">{products.find(p => p.id === selectedPartId)?.name}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                <div className="flex gap-2">
                    <button 
@@ -513,7 +563,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                         const p = products.find(x => x.id === selectedPartId);
                         if (p) setPartsSalePrice(p.wholesale_price || 0);
                      }}
-                     className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200"
+                     className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200 active:scale-95 transition-all"
                    >سعر المحلات</button>
                    <button 
                      type="button"
@@ -521,7 +571,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                         const p = products.find(x => x.id === selectedPartId);
                         if (p) setPartsSalePrice(p.price);
                      }}
-                     className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200"
+                     className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200 active:scale-95 transition-all"
                    >سعر الزبون</button>
                </div>
 
@@ -543,13 +593,20 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                <button 
                  onClick={handleDirectPartSale}
                  disabled={isSellingPart || !selectedPartId}
-                 className="w-full bg-blue-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
+                 className="group relative w-full bg-blue-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl hover:bg-blue-700 transition-all active:scale-90 disabled:opacity-50 flex items-center justify-center gap-3 text-lg overflow-hidden"
                >
-                 {isSellingPart ? 'جاري البيع...' : (
-                   <>
-                      <CheckCircle2 size={24} /> إتمام البيع والخصم من المخزن
-                   </>
-                 )}
+                  <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform duration-200"></div>
+                  {isSellingPart ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>جاري إتمام البيعة...</span>
+                    </div>
+                  ) : (
+                    <>
+                       <CheckCircle2 size={24} className="group-active:scale-125 transition-transform" /> 
+                       إتمام البيع والخصم من المخزن
+                    </>
+                  )}
                </button>
             </div>
           </div>
@@ -583,7 +640,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                      <div className="flex gap-2 items-center">
                         <button 
                            onClick={() => handleCheckout(job, checkoutPayments[job.id] ?? (job.cost - job.paidAmount).toString())} 
-                           className="flex-1 bg-slate-900 dark:bg-blue-600 text-white px-4 py-3 rounded-2xl font-black shadow-lg text-sm active:scale-95 flex items-center justify-center gap-2"
+                           className="flex-1 bg-slate-900 dark:bg-blue-600 text-white px-4 py-3 rounded-2xl font-black shadow-lg text-sm active:scale-90 transition-all flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-blue-700"
                         >
                            <CreditCard size={18}/>
                            استلم وسلم
