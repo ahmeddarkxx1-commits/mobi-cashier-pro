@@ -85,17 +85,23 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
 
       const remaining = total - actualPaid;
       if (remaining > 0 && shopId) {
-         await createDebt({
-            customerName: debtCustomerName,
-            customerPhone: debtCustomerPhone,
-            amount: total,
-            remainingAmount: remaining,
-            description: `باقي بيع: ${cart.map(i => `${i.product.name} (${i.qty})`).join('، ')}`,
-            date: new Date().toISOString(),
-            status: 'pending',
-            type: 'sale',
-            shop_id: shopId
-         }, shopId);
+      const { data: createdDebt, error: debtError } = await createDebt({
+        customerName: debtCustomerName,
+        customerPhone: debtCustomerPhone,
+        amount: total,
+        remainingAmount: remaining,
+        description: `باقي بيع: ${cart.map(i => `${i.product.name} (${i.qty})`).join('، ')}`,
+        date: new Date().toISOString(),
+        status: 'pending',
+        type: 'sale',
+        shop_id: shopId
+      }, shopId);
+
+      if (debtError) {
+        console.error('Error creating debt during checkout:', debtError);
+        toast.error('فشل تسجيل المديونية! لم يتم إتمام البيعة.');
+        return;
+      }
       }
       
       if (actualPaid > 0) {

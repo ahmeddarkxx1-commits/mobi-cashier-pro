@@ -44,11 +44,14 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
       shop_id: shopId
     };
 
-    const created = await createDebt(debtData, shopId);
+    const { data: created, error } = await createDebt(debtData, shopId);
     if (created) {
       setDebts([created, ...debts]);
       setIsAddingDebt(false);
       setNewDebt({ customerName: '', customerPhone: '', amount: 0, description: '' });
+    } else if (error) {
+      console.error('Error creating debt:', error);
+      toast.error('فشل تسجيل المديونية في السحابة!');
     }
   };
 
