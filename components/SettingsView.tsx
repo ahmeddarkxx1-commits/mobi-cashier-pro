@@ -23,7 +23,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('CASHIER');
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'staff' | 'appearance' | 'financial'>('staff');
+  const [activeTab, setActiveTab] = useState<'staff' | 'appearance' | 'financial' | 'data'>('staff');
   const [darkMode, setDarkMode] = useState(false);
   const [shopName, setShopName] = useState('');
   const [isBackingUp, setIsBackingUp] = useState(false);
@@ -169,6 +169,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
       <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm w-fit max-w-full mx-auto overflow-x-auto no-scrollbar">
         <button onClick={() => setActiveTab('staff')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'staff' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Users size={18} /> المستخدمين</button>
         <button onClick={() => setActiveTab('financial')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'financial' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Save size={18} /> عمولات الشركات</button>
+        <button onClick={() => setActiveTab('data')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'data' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Database size={18} /> النسخ الاحتياطي</button>
         <button onClick={() => setActiveTab('appearance')} className={`flex items-center gap-2 px-4 sm:px-6 py-3 rounded-2xl font-black text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'appearance' ? 'bg-slate-900 dark:bg-blue-600 text-white shadow-xl' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><RefreshCw size={18} /> المظهر والشكل</button>
       </div>
 
@@ -219,6 +220,59 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
                <button type="submit" disabled={inviteLoading} className="bg-blue-600 text-white rounded-xl font-black py-3 flex items-center justify-center gap-2 hover:bg-blue-500 transition-all">{inviteLoading ? <Loader2 className="animate-spin" /> : <Send size={18} />} إرسال دعوة</button>
              </form>
           </div>
+        </div>
+      )}
+
+      {/* Data Backup Tab */}
+      {activeTab === 'data' && (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 space-y-8 animate-in slide-in-from-bottom duration-500">
+           <div className="flex flex-col gap-1 text-right">
+              <h3 className="text-xl font-black flex items-center gap-3 justify-end"><Database className="text-blue-500" size={24} /> إدارة البيانات والنسخ الاحتياطي</h3>
+              <p className="text-xs text-slate-400 font-bold">حافظ على بياناتك في أمان ونزل نسخة احتياطية على جهازك</p>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Export */}
+              <div className="bg-blue-50 dark:bg-blue-900/10 p-8 rounded-[2rem] border border-blue-100 dark:border-blue-800 space-y-4 text-center">
+                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mx-auto text-blue-600">
+                    <Download size={32} />
+                 </div>
+                 <div className="space-y-2">
+                    <h4 className="font-black text-lg text-slate-800 dark:text-white">تصدير نسخة احتياطية</h4>
+                    <p className="text-xs text-slate-500 font-bold">هينزل لك ملف JSON فيه كل بيانات المحل (منتجات، صيانة، حسابات..)</p>
+                 </div>
+                 <button 
+                   onClick={handleExportData}
+                   disabled={isBackingUp}
+                   className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                   {isBackingUp ? <Loader2 className="animate-spin" /> : <Download size={20} />}
+                   بدء النسخ الاحتياطي الآن
+                 </button>
+              </div>
+
+              {/* Import */}
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-700 space-y-4 text-center">
+                 <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-2xl flex items-center justify-center mx-auto text-slate-600">
+                    <RefreshCw size={32} />
+                 </div>
+                 <div className="space-y-2">
+                    <h4 className="font-black text-lg text-slate-800 dark:text-white">استعادة من نسخة قديمة</h4>
+                    <p className="text-xs text-slate-500 font-bold">ارفع ملف النسخة الاحتياطية عشان ترجع بياناتك القديمة</p>
+                 </div>
+                 <label className={`w-full bg-slate-900 dark:bg-slate-700 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-slate-800 cursor-pointer transition-all flex items-center justify-center gap-2 ${isRestoring ? 'opacity-50 pointer-events-none' : ''}`}>
+                   {isRestoring ? <Loader2 className="animate-spin" /> : <RefreshCw size={20} />}
+                   رفع واستعادة البيانات
+                   <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
+                 </label>
+              </div>
+           </div>
+
+           <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-800">
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-bold text-center">
+                 ⚠️ تنبيه: البيانات محفوظة تلقائياً في السحاب (Cloud)، النسخة الاحتياطية دي غرضها الأمان الإضافي فقط.
+              </p>
+           </div>
         </div>
       )}
 
