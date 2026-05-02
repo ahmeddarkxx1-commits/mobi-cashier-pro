@@ -21,7 +21,8 @@ import {
   Sparkles,
   CreditCard,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Search
 } from 'lucide-react';
 import { MaintenanceJob, Transaction, Product, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
@@ -149,7 +150,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
         setShowAddJob(false);
         setJobForm({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
         addNotification(`جهاز جديد وصل الورشة: ${newJob.phoneModel}`, 'info');
-        if (userRole === 'admin') setActiveTab('workshop');
+        if (userRole === 'OWNER' || userRole === 'MANAGER') setActiveTab('workshop');
       } else if (error) {
         toast.error('فشل حفظ بيانات الجهاز في السحابة!');
       }
@@ -174,22 +175,21 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
     setIsSellingPart(true);
     try {
+      if (!shopId) throw new Error('Shop ID is missing');
+
       // 1. Update Stock
       await updateProductStock(part.id, part.stock - 1);
       
-      // 2. Record Transaction
-      const { error: tError } = await supabase.from('transactions').insert([{
+      // 2. Record Transaction using prop
+      addTransaction({
         type: 'maintenance',
         medium: 'cash',
         amount: partsSalePrice,
         cost: part.cost,
         profit: partsSalePrice - part.cost,
         description: `بيع قطعة غيار مباشر: ${part.name}`,
-        date: new Date().toISOString(),
-        shop_id: shopId
-      }]);
-      
-      if (tError) throw tError;
+        category: 'maintenance'
+      });
 
       // 3. Update UI
       setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock - 1 } : p));
@@ -205,7 +205,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   };
 
   const updateJobStatus = async (id: string, status: MaintenanceJob['status']) => {
-    if (userRole === 'cashier' && status !== 'delivered') return;
+    if (userRole === 'CASHIER' && status !== 'delivered') return;
     
     try {
       const { success, error } = await updateMaintenanceJob(id, { status });
@@ -278,7 +278,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   };
 
   const updateReportField = async (id: string, field: 'notes' | 'partsUsed' | 'missingParts', value: string) => {
-    if (userRole === 'cashier') return;
+    if (userRole === 'CASHIER') return;
     try {
       await updateMaintenanceJob(id, { [field]: value });
       setJobs(prev => prev.map(j => j.id === id ? { ...j, [field]: value } : j));
@@ -302,7 +302,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       <div className="flex bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-2">
         <button onClick={() => setActiveTab('workshop')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'workshop' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
           <Wrench size={16} /> استلام جهاز (ورشة)
-          {userRole !== 'cashier' && pendingCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white animate-bounce">{pendingCount}</span>}
+          {userRole !== 'CASHIER' && pendingCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white animate-bounce">{pendingCount}</span>}
         </button>
         <button onClick={() => setActiveTab('pos')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'pos' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
           <Receipt size={16} /> تسليم أجهزة جاهزة
@@ -311,7 +311,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
         <button onClick={() => setActiveTab('parts_sale')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts_sale' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
           <ShoppingBag size={16} /> بيع قطع غيار
         </button>
-        {userRole !== 'cashier' && (
+        {userRole !== 'CASHIER' && (
           <button onClick={() => setActiveTab('parts')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
             <Package size={16} /> جرد القطع والنواقص
           </button>
@@ -373,7 +373,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
             </div>
           )}
 
-          {userRole !== 'cashier' && (
+          {userRole !== 'CASHIER' && (
             <div className="grid grid-cols-1 gap-4 pb-20">
              {activeJobs.map(job => {
                const isNew = job.status === 'pending';
@@ -394,7 +394,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                       </div>
                       <div className="flex flex-col items-end gap-2">
                          <div className="text-base font-black text-blue-600 bg-blue-50 px-4 py-1.5 rounded-full">{job.cost} ج</div>
-                         <select value={job.status} disabled={userRole === 'cashier'} onChange={e => updateJobStatus(job.id, e.target.value as any)} className={`text-xs p-2.5 rounded-xl border-none font-black shadow-sm outline-none transition-all appearance-none text-center min-w-[150px] ${job.status === 'pending' ? 'bg-amber-100 text-amber-700' : job.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-600 text-white shadow-lg'}`}>
+                         <select value={job.status} disabled={userRole === 'CASHIER'} onChange={e => updateJobStatus(job.id, e.target.value as any)} className={`text-xs p-2.5 rounded-xl border-none font-black shadow-sm outline-none transition-all appearance-none text-center min-w-[150px] ${job.status === 'pending' ? 'bg-amber-100 text-amber-700' : job.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-600 text-white shadow-lg'}`}>
                             <option value="pending">⏳ لسه مستني الشغل</option>
                             <option value="in-progress">⚙️ شغالين فيه دلوقتي</option>
                             <option value="completed">✅ خلص خلاص (جاهز)</option>

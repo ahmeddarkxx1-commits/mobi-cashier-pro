@@ -240,7 +240,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
 
       if (prodData.error || transData.error || jobData.error) {
         console.error('Fetch error:', prodData.error || transData.error || jobData.error);
-        if (!isBackground) toast.error('فشل مزامنة البيانات من السحابة. تأكد من الإنترنت.');
+        if (!isSilent) toast.error('فشل مزامنة البيانات من السحابة. تأكد من الإنترنت.');
         return;
       }
 
