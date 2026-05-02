@@ -356,7 +356,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                       </div>
                       <div className="space-y-2 text-right">
                         <label className="text-sm font-black text-blue-600">التكلفة الإجمالية (جنيه)</label>
-                        <input type="number" required placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-100 dark:bg-slate-800 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.cost || ''} onChange={e => setJobForm({...jobForm, cost: Number(e.target.value)})} />
+                        <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-100 dark:bg-slate-800 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.cost || ''} onChange={e => setJobForm({...jobForm, cost: Number(e.target.value)})} />
                       </div>
                     </div>
                   </div>
