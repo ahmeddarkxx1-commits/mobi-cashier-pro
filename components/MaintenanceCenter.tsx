@@ -279,6 +279,16 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     }
   };
 
+  const updateJobCost = async (id: string, newCost: number) => {
+    try {
+      await updateMaintenanceJob(id, { cost: newCost });
+      setJobs(prev => prev.map(j => j.id === id ? { ...j, cost: newCost } : j));
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل تحديث التكلفة');
+    }
+  };
+
   return (
     <div className="space-y-6 font-['Cairo'] relative">
       <div className="flex bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-2">
@@ -427,7 +437,16 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                   </div>
                                 )}
                              </div>
-                             <button onClick={() => setEditingJobId(null)} className="w-full bg-slate-900 text-white py-4 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-2 active:scale-95"><Save size={16}/> احفظ تقرير الصنايعي</button>
+                             <div className="space-y-2">
+                                <label className="text-[10px] font-black text-green-600 uppercase flex items-center gap-1 justify-end">التكلفة النهائية (قابلة للتعديل) <CreditCard size={12}/></label>
+                                <input 
+                                  type="number" 
+                                  className="w-full p-4 text-lg border-2 border-green-100 rounded-xl bg-white dark:bg-slate-700 font-black text-center text-green-700 outline-none focus:border-green-500" 
+                                  value={job.cost} 
+                                  onChange={(e) => updateJobCost(job.id, Number(e.target.value))} 
+                                />
+                             </div>
+                             <button onClick={() => setEditingJobId(null)} className="w-full bg-slate-900 text-white py-4 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-2 active:scale-95"><Save size={16}/> حفظ التغييرات والتقرير</button>
                           </div>
                         ) : (
                           <div className="space-y-3">
