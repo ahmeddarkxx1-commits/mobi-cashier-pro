@@ -59,6 +59,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [checkoutPayments, setCheckoutPayments] = useState<Record<string, string>>({});
   const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
+  const [isWholesale, setIsWholesale] = useState(false);
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
 
@@ -71,15 +72,19 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       return;
     }
     
+    const price = isWholesale ? (part.wholesalePrice || part.price) : part.price;
     const newPartsUsed = job.partsUsed ? `${job.partsUsed}, ${part.name}` : part.name;
     try {
-      await updateMaintenanceJob(jobId, { partsUsed: newPartsUsed });
+      await updateMaintenanceJob(jobId, { 
+        partsUsed: newPartsUsed,
+        cost: (job.cost || 0) + price
+      });
       await updateProductStock(part.id, part.stock - 1);
       
-      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, partsUsed: newPartsUsed } : j));
+      setJobs(prev => prev.map(j => j.id === jobId ? { ...j, partsUsed: newPartsUsed, cost: (j.cost || 0) + price } : j));
       setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock - 1 } : p));
       
-      toast.success(`تم سحب ${part.name} من المخزن وإضافتها للتقرير`);
+      toast.success(`تم سحب ${part.name} من المخزن وإضافتها للتقرير بتكلفة ${price} ج`);
     } catch (err) {
       console.error(err);
     }
@@ -230,9 +235,6 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   return (
     <div className="space-y-6 font-['Cairo'] relative">
-      {/* Toast notifications handled by react-hot-toast in index.tsx */}
-
-      {/* Tabs Menu */}
       <div className="flex bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-2">
         <button onClick={() => setActiveTab('workshop')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'workshop' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
           <Wrench size={16} /> استلام جهاز (ورشة)
@@ -264,22 +266,11 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
              </button>
           </div>
 
-          {userRole === 'cashier' && !showAddJob && (
-            <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
-               <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600">
-                 <Wrench size={40} />
-               </div>
-               <h4 className="text-xl font-black text-slate-800 dark:text-white mb-2">قسم استلام الصيانة</h4>
-               <p className="text-slate-400 font-bold max-w-sm mx-auto">اضغط على الزرار اللي فوق عشان تسجل بيانات الجهاز اللي العميل جابه وتدخله الورشة.</p>
-            </div>
-          )}
-
           {showAddJob && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
                <form onSubmit={handleAddJob} className="bg-white dark:bg-slate-900 w-full max-w-lg p-8 rounded-[2.5rem] shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 relative">
                   <button type="button" onClick={() => setShowAddJob(false)} className="absolute top-6 left-6 text-slate-400 hover:text-red-500"><Plus className="rotate-45" size={24}/></button>
                   <h4 className="text-2xl font-black text-slate-800 dark:text-white text-right">استلام جهاز صيانة</h4>
-                  
                   <div className="space-y-5">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2 text-right">
@@ -362,6 +353,10 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                              <div className="space-y-2">
                                 <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 justify-end">قطع ركبتها <Layers size={12}/></label>
                                 <input placeholder="شاشة، بطارية، سماعة..." className="w-full p-4 text-xs border rounded-xl bg-white dark:bg-slate-700 font-bold text-right outline-none focus:border-blue-500" value={job.partsUsed || ''} onChange={(e) => updateReportField(job.id, 'partsUsed', e.target.value)} />
+                                <div className="mt-3 flex items-center gap-2 p-2 bg-blue-50 rounded-xl w-fit cursor-pointer" onClick={() => setIsWholesale(!isWholesale)}>
+                                  <input type="checkbox" checked={isWholesale} onChange={() => {}} className="w-4 h-4" />
+                                  <span className="text-xs font-black text-blue-700">حساب بسعر "المحلات / جملة"</span>
+                                </div>
                                 {maintenanceParts.length > 0 && (
                                   <div className="flex gap-2 mt-2">
                                     <button type="button" onClick={() => {
