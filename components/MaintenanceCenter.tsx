@@ -116,7 +116,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
         shop_id: shopId
       };
 
-      const newJob = await createMaintenanceJob(jobData, shopId);
+      const { data: newJob, error } = await createMaintenanceJob(jobData, shopId);
       if (newJob) {
         if (jobData.paidAmount > 0) {
           addTransaction({
@@ -134,6 +134,8 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
         setJobForm({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
         addNotification(`جهاز جديد وصل الورشة: ${newJob.phoneModel}`, 'info');
         if (userRole === 'admin') setActiveTab('workshop');
+      } else if (error) {
+        toast.error('فشل حفظ بيانات الجهاز في السحابة!');
       }
     } catch (err) {
       console.error(err);
@@ -147,7 +149,11 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     if (userRole === 'cashier' && status !== 'delivered') return;
     
     try {
-      await updateMaintenanceJob(id, { status });
+      const { success, error } = await updateMaintenanceJob(id, { status });
+      if (!success) {
+        toast.error('فشل تحديث حالة الجهاز في السحابة!');
+        return;
+      }
       const job = jobs.find(j => j.id === id);
       const oldStatus = job?.status;
 
@@ -158,6 +164,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       }
     } catch (err) {
       console.error(err);
+      toast.error('حدث خطأ أثناء التحديث.');
     }
   };
 

@@ -46,29 +46,34 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         
         if (error) {
            console.error('DB Update Error:', error);
-           // Even if DB fails, update locally for demo purposes
+           toast.error('فشل تحديث البيانات في السحابة!');
+           setIsSaving(false);
+           return;
         }
 
         setProducts(prev => prev.map(p => p.id === editingId ? { ...p, ...newProduct } : p));
         setEditingId(null);
       } else {
-        const productData = {
-          ...newProduct,
-          id: Math.random().toString(36).substr(2, 9),
-          shop_id: shopId
-        };
-
         // Insert DB
-        const { error } = await supabase
+        const { data: productData, error } = await supabase
           .from('products')
-          .insert([productData]);
+          .insert([{
+            ...newProduct,
+            shop_id: shopId
+          }])
+          .select()
+          .single();
         
         if (error) {
           console.error('DB Insert Error:', error);
-          // Fallback: Add locally if DB fails (common in demo/test mode)
+          toast.error('فشل إضافة المنتج لقاعدة البيانات!');
+          setIsSaving(false);
+          return;
         }
 
-        setProducts([...products, productData as any]);
+        if (productData) {
+          setProducts([...products, productData as any]);
+        }
       }
       setIsAdding(false);
       setNewProduct({ name: '', price: 0, cost: 0, category: 'accessory', stock: 0 });
@@ -98,7 +103,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         setProducts(products.filter(p => p.id !== id));
       } catch (err) {
         console.error('Error deleting product:', err);
-        alert('فشل حذف المنتج.');
+        toast.error('فشل حذف المنتج من قاعدة البيانات!');
       }
     }
   };

@@ -7,14 +7,16 @@ export const updateProductStock = async (id: string, newStock: number) => {
     .from('products')
     .update({ stock: newStock })
     .eq('id', id);
-  if (error) console.error('Error updating stock:', error);
+  if (error) {
+    console.error('Error updating stock:', error);
+    return { success: false, error };
+  }
+  return { success: true };
 };
 
 export const createMaintenanceJob = async (job: Omit<MaintenanceJob, 'id'>, shopId: string) => {
-  const newId = Math.random().toString(36).substr(2, 9);
   const jobToInsert = { 
     ...job, 
-    id: newId, 
     shop_id: shopId,
     paidAmount: job.paidAmount || 0 
   };
@@ -25,8 +27,11 @@ export const createMaintenanceJob = async (job: Omit<MaintenanceJob, 'id'>, shop
     .select()
     .single();
     
-  if (error) console.error('Error creating job:', error);
-  return data;
+  if (error) {
+    console.error('Error creating job:', error);
+    return { data: null, error };
+  }
+  return { data, error: null };
 };
 
 export const updateMaintenanceJob = async (id: string, updates: Partial<MaintenanceJob>) => {
@@ -34,16 +39,22 @@ export const updateMaintenanceJob = async (id: string, updates: Partial<Maintena
     .from('maintenance_jobs')
     .update(updates)
     .eq('id', id);
-  if (error) console.error('Error updating job:', error);
+  if (error) {
+    console.error('Error updating job:', error);
+    return { success: false, error };
+  }
+  return { success: true };
 };
 
 export const createDebt = async (debt: Omit<Debt, 'id'>, shopId: string) => {
-  const newId = Math.random().toString(36).substr(2, 9);
   const { data, error } = await supabase
     .from('debts')
-    .insert([{ ...debt, id: newId, shop_id: shopId }])
+    .insert([{ ...debt, shop_id: shopId }])
     .select()
     .single();
-  if (error) console.error('Error creating debt:', error);
-  return data;
+  if (error) {
+    console.error('Error creating debt:', error);
+    return { data: null, error };
+  }
+  return { data, error: null };
 };

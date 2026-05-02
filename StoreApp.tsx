@@ -238,6 +238,12 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
         supabase.from('shops').select('name').eq('id', sId).single()
       ]);
 
+      if (prodData.error || transData.error || jobData.error) {
+        console.error('Fetch error:', prodData.error || transData.error || jobData.error);
+        if (!isBackground) toast.error('فشل مزامنة البيانات من السحابة. تأكد من الإنترنت.');
+        return;
+      }
+
       if (prodData.data) setProducts(prodData.data);
       if (transData.data) setTransactions(transData.data);
       if (jobData.data) setMaintenanceJobs(jobData.data);
@@ -280,7 +286,9 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     const { error } = await supabase.from('transactions').insert([newT]);
     if (error) {
       console.error('Error saving transaction:', error);
-      // Revert if needed or show error
+      toast.error('فشل تسجيل العملية في قاعدة البيانات!');
+      // Revert local state on error
+      setTransactions(prev => prev.filter(item => item.id !== newT.id));
     }
   };
 
