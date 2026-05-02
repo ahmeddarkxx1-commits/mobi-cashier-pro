@@ -117,6 +117,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   };
 
   const handleExportData = async () => {
+    if (!shopId) return alert('❌ خطأ: لم يتم التعرف على معرف المحل');
     setIsBackingUp(true);
     try {
       const [products, transactions, maintenance, expenses, debts] = await Promise.all([
@@ -126,14 +127,40 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
         supabase.from('expenses').select('*').eq('tenant_id', shopId),
         supabase.from('debts').select('*').eq('tenant_id', shopId),
       ]);
-      const backupData = { exportDate: new Date().toISOString(), shopId, data: { products: products.data || [], transactions: transactions.data || [], maintenance: maintenance.data || [], expenses: expenses.data || [], debts: debts.data || [] } };
+
+      const hasData = (products.data?.length || 0) + (transactions.data?.length || 0) + (maintenance.data?.length || 0);
+      
+      if (hasData === 0) {
+        if (!confirm('⚠️ تنبيه: لا توجد بيانات مسجلة حالياً لتصديرها. هل تريد تحميل ملف فارغ؟')) {
+          setIsBackingUp(false);
+          return;
+        }
+      }
+
+      const backupData = { 
+        exportDate: new Date().toISOString(), 
+        shopId, 
+        data: { 
+          products: products.data || [], 
+          transactions: transactions.data || [], 
+          maintenance: maintenance.data || [], 
+          expenses: expenses.data || [], 
+          debts: debts.data || [] 
+        } 
+      };
+
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = `backup_${new Date().toLocaleDateString('en-CA')}.json`;
       link.click();
-    } catch (err) { alert('❌ خطأ في النسخ'); } finally { setIsBackingUp(false); }
+      alert('✅ تم تصدير ' + hasData + ' سجل بنجاح');
+    } catch (err) { 
+      alert('❌ خطأ في النسخ الاحتياطي'); 
+    } finally { 
+      setIsBackingUp(false); 
+    }
   };
 
   const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
