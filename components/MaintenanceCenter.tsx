@@ -52,11 +52,14 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   userRole,
   shopId
 }) => {
-  const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts'>('workshop');
+  const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts' | 'parts_sale'>('workshop');
   const [showAddJob, setShowAddJob] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSellingPart, setIsSellingPart] = useState(false);
+  const [selectedPartId, setSelectedPartId] = useState<string>('');
+  const [partsSalePrice, setPartsSalePrice] = useState<number>(0);
   const [checkoutPayments, setCheckoutPayments] = useState<Record<string, string>>({});
   const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
   const [isWholesale, setIsWholesale] = useState(false);
@@ -147,6 +150,49 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       toast.error('فشل تسجيل الجهاز.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDirectPartSale = async () => {
+    const part = products.find(p => p.id === selectedPartId);
+    if (!part || partsSalePrice <= 0) {
+      toast.error('أكمل بيانات البيع يا عالمي!');
+      return;
+    }
+    if (part.stock <= 0) {
+      toast.error('القطعة دي خلصانة من المخزن!');
+      return;
+    }
+
+    setIsSellingPart(true);
+    try {
+      // 1. Update Stock
+      await updateProductStock(part.id, part.stock - 1);
+      
+      // 2. Record Transaction
+      const { error: tError } = await supabase.from('transactions').insert([{
+        type: 'maintenance',
+        medium: 'cash',
+        amount: partsSalePrice,
+        cost: part.cost,
+        profit: partsSalePrice - part.cost,
+        description: `بيع قطعة غيار مباشر: ${part.name}`,
+        date: new Date().toISOString(),
+        shop_id: shopId
+      }]);
+      
+      if (tError) throw tError;
+
+      // 3. Update UI
+      setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock - 1 } : p));
+      setSelectedPartId('');
+      setPartsSalePrice(0);
+      toast.success(`تم بيع ${part.name} بنجاح!`);
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل تسجيل عملية البيع.');
+    } finally {
+      setIsSellingPart(false);
     }
   };
 
@@ -244,8 +290,11 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
           <Receipt size={16} /> تسليم أجهزة جاهزة
           {readyToDeliverCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-green-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white">{readyToDeliverCount}</span>}
         </button>
+        <button onClick={() => setActiveTab('parts_sale')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts_sale' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+          <ShoppingBag size={16} /> بيع قطع غيار
+        </button>
         {userRole !== 'cashier' && (
-          <button onClick={() => setActiveTab('parts')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+          <button onClick={() => setActiveTab('parts')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
             <Package size={16} /> جرد القطع والنواقص
           </button>
         )}
@@ -400,6 +449,72 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
              })}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'parts_sale' && (
+        <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+          <div className="bg-white dark:bg-slate-900 p-10 rounded-[3rem] shadow-2xl border border-slate-100 dark:border-slate-800 text-right">
+            <div className="flex flex-col items-center gap-4 mb-8">
+               <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600">
+                  <ShoppingBag size={40} />
+               </div>
+               <div className="text-center">
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-white">بيع قطع غيار مباشر</h3>
+                  <p className="text-slate-400 font-bold text-sm">بيع لأصحاب المحلات بأسعار متغيرة مع خصم فوري من المخزن</p>
+               </div>
+            </div>
+
+            <div className="space-y-6">
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase">اختر قطعة الغيار</label>
+                  <select 
+                    className="w-full p-5 rounded-2xl border-2 border-slate-50 bg-slate-50 dark:bg-slate-800 font-black text-right outline-none focus:border-blue-500 transition-all"
+                    value={selectedPartId}
+                    onChange={(e) => {
+                      const pid = e.target.value;
+                      setSelectedPartId(pid);
+                      const part = products.find(p => p.id === pid);
+                      if (part) setPartsSalePrice(part.wholesalePrice || part.price);
+                    }}
+                  >
+                    <option value="">-- اختر من المخزن --</option>
+                    {products.filter(p => p.category === 'part' || p.category === 'accessory').map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} ({item.stock} حتة) - تكلفة: {item.cost} ج
+                      </option>
+                    ))}
+                  </select>
+               </div>
+
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase">سعر البيع المطلوب</label>
+                  <div className="relative">
+                     <input 
+                       type="number"
+                       placeholder="0"
+                       className="w-full p-5 rounded-2xl border-2 border-blue-100 bg-blue-50/30 text-blue-700 font-black text-center text-3xl outline-none focus:border-blue-500 transition-all"
+                       value={partsSalePrice || ''}
+                       onChange={(e) => setPartsSalePrice(Number(e.target.value))}
+                     />
+                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-400 font-black">جنيـه</div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1 font-bold text-center">تقدر تمسح السعر وتكتب السعر اللي اتفقت عليه يدوي</p>
+               </div>
+
+               <button 
+                 onClick={handleDirectPartSale}
+                 disabled={isSellingPart || !selectedPartId}
+                 className="w-full bg-blue-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 text-lg"
+               >
+                 {isSellingPart ? 'جاري البيع...' : (
+                   <>
+                      <CheckCircle2 size={24} /> إتمام البيع والخصم من المخزن
+                   </>
+                 )}
+               </button>
+            </div>
+          </div>
         </div>
       )}
 
