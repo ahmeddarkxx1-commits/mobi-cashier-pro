@@ -245,18 +245,18 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto">
           <button 
-            onClick={() => setShowCatManager(!showCatManager)}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all"
+            onClick={() => setShowCatManager(true)}
+            className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all flex-1 sm:flex-none text-sm"
           >
-            <Filter size={20} />
+            <Filter size={18} />
             إدارة التصنيفات
           </button>
           <button 
-            onClick={() => { setIsAdding(!isAdding); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0}); }}
-            className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl w-full md:w-auto active:scale-95 transition-all"
+            onClick={() => { setIsAdding(true); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0}); }}
+            className="bg-indigo-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl w-full sm:w-auto active:scale-95 transition-all text-sm"
           >
-            <Plus size={20} />
-            {editingId ? 'تعديل الصنف ده' : 'إضافة بضاعة جديدة'}
+            <Plus size={18} />
+            {editingId ? 'تعديل الصنف' : 'إضافة بضاعة'}
           </button>
         </div>
       </div>
@@ -312,84 +312,92 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
       </div>
 
       {showCatManager && (
-        <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 space-y-6">
-          <div className="flex items-center justify-between">
-            <h4 className="font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <Filter size={16} />
-              تحكم في تصنيفات المحل
-            </h4>
-          </div>
-
-          <div className="space-y-4">
-            <div className="text-right">
-              <span className="text-xs font-black text-slate-400">تصنيفات عامة:</span>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {customCategories.map(cat => (
-                  <div key={cat} className="bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-3">
-                    <span className="font-bold text-sm">{getCategoryLabel(cat)}</span>
-                    <button onClick={() => removeCategory(cat, 'general')} className="text-red-400 hover:text-red-600">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+            <div className="p-6 border-b dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+              <div>
+                <h4 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                  <Settings2 size={24} className="text-indigo-600" />
+                  إدارة التصنيفات
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 mt-1">نظّم بضاعتك حسب اختيارك</p>
               </div>
-            </div>
-
-            <div className="text-right">
-              <span className="text-xs font-black text-blue-400">تصنيفات قطع الغيار (تظهر في الورشة):</span>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {partCategories.map(cat => (
-                  <div key={cat} className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-800 flex items-center gap-3">
-                    <span className="font-bold text-sm text-blue-700 dark:text-blue-300">{getCategoryLabel(cat)}</span>
-                    <button onClick={() => removeCategory(cat, 'part')} className="text-red-400 hover:text-red-600">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t dark:border-slate-800">
-            <div className="flex-1 space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase mr-2">إضافة تصنيف جديد</label>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="مثلاً: شاشات، بطاريات، كفرات..." 
-                  className="flex-1 p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800 text-right font-bold focus:border-indigo-500 outline-none transition-all"
-                  value={newCatName}
-                  onChange={e => setNewCatName(e.target.value)}
-                  onKeyPress={e => e.key === 'Enter' && addCategory()}
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase mr-2">نوع التصنيف</label>
-              <div className="flex bg-white dark:bg-slate-800 p-1 rounded-2xl border-2 border-slate-100 dark:border-slate-800">
-                <button 
-                  onClick={() => setNewCatType('general')}
-                  className={`px-6 py-3 rounded-xl font-black text-xs transition-all ${newCatType === 'general' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-                >
-                  بضاعة عامة
-                </button>
-                <button 
-                  onClick={() => setNewCatType('part')}
-                  className={`px-6 py-3 rounded-xl font-black text-xs transition-all ${newCatType === 'part' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
-                >
-                  قطعة غيار
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-end">
-              <button 
-                onClick={addCategory}
-                className="bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all h-[58px]"
-              >
-                إضافة
+              <button onClick={() => setShowCatManager(false)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 rounded-xl transition-all">
+                <X size={24} />
               </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                    <Package size={12} /> بضاعة عامة (إكسسوارات)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {customCategories.map(cat => (
+                      <div key={cat} className="bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center gap-2 group shadow-sm">
+                        <span className="text-sm font-bold">{getCategoryLabel(cat)}</span>
+                        <button onClick={() => removeCategory(cat, 'general')} className="text-slate-300 hover:text-red-500 transition-colors">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                    <Filter size={12} /> قطع غيار (للورشة)
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {partCategories.map(cat => (
+                      <div key={cat} className="bg-blue-50 dark:bg-blue-900/20 px-3 py-2 rounded-xl border border-blue-100 dark:border-blue-800 flex items-center gap-2 group shadow-sm">
+                        <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{getCategoryLabel(cat)}</span>
+                        <button onClick={() => removeCategory(cat, 'part')} className="text-blue-300 hover:text-red-500 transition-colors">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700 space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-500 uppercase mr-2">اسم التصنيف الجديد</label>
+                  <input 
+                    type="text" 
+                    placeholder="شاشات، بطاريات، جرابات..." 
+                    className="w-full p-4 rounded-2xl border-2 border-white dark:border-slate-800 bg-white dark:bg-slate-900 text-right font-bold focus:border-indigo-500 outline-none transition-all shadow-sm"
+                    value={newCatName}
+                    onChange={e => setNewCatName(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 flex bg-white dark:bg-slate-900 p-1 rounded-2xl border-2 border-white dark:border-slate-800 shadow-sm">
+                    <button 
+                      onClick={() => setNewCatType('general')}
+                      className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${newCatType === 'general' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                      إكسسوار / بضاعة
+                    </button>
+                    <button 
+                      onClick={() => setNewCatType('part')}
+                      className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${newCatType === 'part' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                    >
+                      قطعة غيار
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={addCategory}
+                    className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:opacity-90 active:scale-95 transition-all text-sm"
+                  >
+                    إضافة الآن
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -407,7 +415,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="p-8 space-y-8">
+            <form onSubmit={handleSaveProduct} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2 text-right">
                   <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">اسم المنتج</label>
@@ -420,112 +428,144 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                   />
                 </div>
                 <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">الكمية المتاحة</label>
+                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">الكمية المتاحة</label>
                   <input 
                     type="number" 
                     placeholder="0" 
                     required 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-xl focus:border-indigo-500 outline-none transition-all" 
+                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-xl focus:border-indigo-500 outline-none transition-all" 
                     value={newProduct.stock || ''} 
                     onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})} 
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                 <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر التكلفة (عليّ بكام؟)</label>
+                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر التكلفة (عليّ بكام؟)</label>
                   <input 
                     type="number" 
                     placeholder="0" 
                     required 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-xl focus:border-blue-500 outline-none transition-all" 
+                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-lg sm:text-xl focus:border-blue-500 outline-none transition-all" 
                     value={newProduct.cost || ''} 
                     onChange={e => setNewProduct({...newProduct, cost: Number(e.target.value)})} 
                   />
                 </div>
                 <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر البيع للزبون</label>
+                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر البيع للزبون</label>
                   <input 
                     type="number" 
                     placeholder="0" 
                     required 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-xl focus:border-green-500 outline-none transition-all text-green-600" 
+                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-lg sm:text-xl focus:border-green-500 outline-none transition-all text-green-600" 
                     value={newProduct.price || ''} 
                     onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} 
                   />
                 </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر الجملة (للمحلات)</label>
+                <div className="space-y-2 text-right sm:col-span-2 md:col-span-1">
+                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر الجملة (للمحلات)</label>
                   <input 
                     type="number" 
                     placeholder="0" 
-                    className="w-full p-5 rounded-2xl border-2 border-blue-50 dark:border-blue-900/20 bg-blue-50/30 dark:bg-blue-900/10 text-right font-black text-xl focus:border-blue-500 outline-none transition-all text-blue-600" 
+                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-blue-50 dark:border-blue-900/20 bg-blue-50/30 dark:bg-blue-900/10 text-right font-black text-lg sm:text-xl focus:border-blue-500 outline-none transition-all text-blue-600" 
                     value={newProduct.wholesale_price || ''} 
                     onChange={e => setNewProduct({...newProduct, wholesale_price: Number(e.target.value)})} 
                   />
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b dark:border-slate-800 pb-4">
-                  <label className="text-sm font-black text-slate-500 uppercase tracking-widest">اختر المجموعة أولاً</label>
-                  <div className="flex bg-slate-50 dark:bg-slate-800 p-1.5 rounded-[1.5rem] gap-2 w-full sm:w-auto">
+              <div className="space-y-4">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl flex flex-col gap-4">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. اختر نوع البضاعة (المجموعة)</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
                     {GROUPS.map(group => (
                       <button
                         key={group.id}
                         type="button"
                         onClick={() => setActiveGroup(group.id as any)}
-                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all ${
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2 ${
                           activeGroup === group.id 
-                            ? 'bg-white dark:bg-slate-700 shadow-lg text-slate-900 dark:text-white scale-105' 
-                            : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                            ? 'bg-white dark:bg-slate-700 border-indigo-500 shadow-md scale-105' 
+                            : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600'
                         }`}
                       >
-                        <span>{group.icon}</span>
-                        {group.label}
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${activeGroup === group.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                          {group.icon}
+                        </div>
+                        <span className="font-black text-[10px]">{group.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  {getGroupCategories(activeGroup).map(cat => (
-                    <button
-                      key={cat}
+                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">2. اختر التصنيف الفرعي</span>
+                    <span className="text-[9px] text-slate-400">تظهر هنا الأصناف التي أضفتها</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {getGroupCategories(activeGroup).map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setNewProduct({...newProduct, category: cat})}
+                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group relative overflow-hidden ${
+                          newProduct.category === cat 
+                            ? 'border-indigo-500 bg-white dark:bg-slate-800 shadow-lg scale-[1.02]' 
+                            : 'border-slate-50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-200'
+                        }`}
+                      >
+                        {newProduct.category === cat && (
+                          <div className="absolute top-0 right-0 p-1.5 bg-indigo-500 text-white rounded-bl-xl shadow-sm">
+                            <CheckCircle2 size={12} />
+                          </div>
+                        )}
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${
+                          newProduct.category === cat ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-slate-100 dark:bg-slate-800'
+                        }`}>
+                          {CATEGORY_ICONS[cat] || '📦'}
+                        </div>
+                        <span className={`font-black text-[10px] text-center leading-tight ${newProduct.category === cat ? 'text-indigo-600' : 'text-slate-500'}`}>
+                          {getCategoryLabel(cat)}
+                        </span>
+                      </button>
+                    ))}
+                    
+                    {/* Quick Add Helper */}
+                    <button 
                       type="button"
-                      onClick={() => setNewProduct({...newProduct, category: cat})}
-                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group ${
-                        newProduct.category === cat 
-                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 shadow-lg scale-105' 
-                          : 'border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'
-                      }`}
+                      onClick={() => setShowCatManager(true)}
+                      className="p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all group"
                     >
-                      <span className="text-2xl group-hover:scale-110 transition-transform">
-                        {CATEGORY_ICONS[cat] || '📦'}
-                      </span>
-                      <span className="font-black text-xs text-center">{getCategoryLabel(cat)}</span>
+                      <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                        <Plus size={20} />
+                      </div>
+                      <span className="font-black text-[9px]">أضف تصنيف</span>
                     </button>
-                  ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-4 pt-8 border-t dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-8 border-t dark:border-slate-800">
                 <button 
                   type="button" 
                   onClick={closeModal} 
-                  className="px-8 py-4 text-slate-500 font-black hover:text-slate-800 dark:hover:text-white transition-colors"
+                  className="w-full sm:w-auto px-8 py-4 text-slate-500 font-black hover:text-slate-800 dark:hover:text-white transition-colors order-2 sm:order-1"
                 >
                   إلغاء
                 </button>
                 <button 
                   type="submit" 
                   disabled={isSaving}
-                  className="bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2"
+                  className="w-full sm:w-auto bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
                 >
                   {isSaving ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : <Plus size={20} />}
+                  ) : <CheckCircle2 size={20} />}
                   {editingId ? 'حفظ التعديلات' : 'إضافة للمخزن'}
                 </button>
               </div>

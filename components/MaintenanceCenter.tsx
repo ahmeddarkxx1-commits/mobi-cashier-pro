@@ -343,41 +343,54 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
           </div>
 
           {showAddJob && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-               <form onSubmit={handleAddJob} className="bg-white dark:bg-slate-900 w-full max-w-lg p-8 rounded-[2.5rem] shadow-2xl space-y-6 border border-slate-200 dark:border-slate-800 relative">
-                  <button type="button" onClick={() => setShowAddJob(false)} className="absolute top-6 left-6 text-slate-400 hover:text-red-500"><Plus className="rotate-45" size={24}/></button>
-                  <h4 className="text-2xl font-black text-slate-800 dark:text-white text-right">استلام جهاز صيانة</h4>
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[120] flex items-center justify-center p-3 sm:p-4">
+               <form onSubmit={handleAddJob} className="bg-white dark:bg-slate-900 w-full max-w-lg p-5 sm:p-8 rounded-[2.5rem] shadow-2xl space-y-5 sm:space-y-6 border border-slate-200 dark:border-slate-800 relative max-h-[95vh] overflow-y-auto no-scrollbar">
+                  <button type="button" onClick={() => setShowAddJob(false)} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-slate-400 hover:text-red-500 p-2"><Plus className="rotate-45" size={24}/></button>
+                  <h4 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white text-right">استلام جهاز صيانة</h4>
+                  <div className="space-y-4 sm:space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2 text-right">
-                        <label className="text-sm font-black text-slate-700">رقم الموبايل</label>
-                        <input placeholder="رقم العميل..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={jobForm.customerPhone} onChange={e => setJobForm({...jobForm, customerPhone: e.target.value})} />
+                        <label className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mr-2">رقم الموبايل</label>
+                        <input placeholder="01xxxxxxxxx" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-right font-bold outline-none focus:border-blue-500 shadow-sm" value={jobForm.customerPhone} onChange={e => setJobForm({...jobForm, customerPhone: e.target.value})} />
                       </div>
                       <div className="space-y-2 text-right">
-                        <label className="text-sm font-black text-slate-700">اسم العميل</label>
-                        <input required placeholder="الاسم..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={jobForm.customerName} onChange={e => setJobForm({...jobForm, customerName: e.target.value})} />
+                        <label className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mr-2">اسم العميل</label>
+                        <input required placeholder="الاسم الكامل..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-right font-bold outline-none focus:border-blue-500 shadow-sm" value={jobForm.customerName} onChange={e => setJobForm({...jobForm, customerName: e.target.value})} />
                       </div>
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-black text-slate-700">نوع الموبايل</label>
-                      <input required placeholder="مثلاً: ايفون 13 برو..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={jobForm.phoneModel} onChange={e => setJobForm({...jobForm, phoneModel: e.target.value})} />
+                      <label className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mr-2">نوع الموبايل وموديله</label>
+                      <input required placeholder="مثلاً: iPhone 13 Pro Max..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-right font-bold outline-none focus:border-blue-500 shadow-sm" value={jobForm.phoneModel} onChange={e => setJobForm({...jobForm, phoneModel: e.target.value})} />
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-black text-slate-700">الشكوى (فيه إيه؟)</label>
-                      <input required placeholder="العميل قال إيه العطل؟" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={jobForm.issue} onChange={e => setJobForm({...jobForm, issue: e.target.value})} />
+                      <label className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-widest mr-2">وصف العطل (الشكوى)</label>
+                      <input required placeholder="العميل بيشتكي من إيه؟" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-900 text-right font-bold outline-none focus:border-blue-500 shadow-sm" value={jobForm.issue} onChange={e => setJobForm({...jobForm, issue: e.target.value})} />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2 text-right">
-                        <label className="text-sm font-black text-blue-600">هيدفع كام دلوقتي (مقدم)</label>
-                        <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-100 dark:bg-slate-800 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.paidAmount || ''} onChange={e => setJobForm({...jobForm, paidAmount: Number(e.target.value)})} />
+                        <label className="text-[10px] sm:text-xs font-black text-blue-600 uppercase tracking-widest mr-2">مقدم صيانة (ج)</label>
+                        <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-50 dark:border-blue-900/20 bg-blue-50/20 dark:bg-blue-900/10 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.paidAmount || ''} onChange={e => setJobForm({...jobForm, paidAmount: Number(e.target.value)})} />
                       </div>
                       <div className="space-y-2 text-right">
-                        <label className="text-sm font-black text-blue-600">التكلفة الإجمالية (جنيه)</label>
-                        <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-100 dark:bg-slate-800 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.cost || ''} onChange={e => setJobForm({...jobForm, cost: Number(e.target.value)})} />
+                        <label className="text-[10px] sm:text-xs font-black text-blue-600 uppercase tracking-widest mr-2">التكلفة المتوقعة</label>
+                        <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-blue-50 dark:border-blue-900/20 bg-blue-50/20 dark:bg-blue-900/10 text-right font-black text-lg outline-none focus:border-blue-500" value={jobForm.cost || ''} onChange={e => setJobForm({...jobForm, cost: Number(e.target.value)})} />
                       </div>
                     </div>
                   </div>
-                  <button type="submit" className="w-full bg-blue-600 text-white rounded-2xl font-black py-5 shadow-xl text-lg mt-4 active:scale-95">سجل الجهاز وحوله للورشة</button>
+                  <button 
+                    type="submit" 
+                    disabled={isSaving}
+                    className="w-full bg-blue-600 text-white rounded-3xl font-black py-5 shadow-xl text-lg mt-4 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? (
+                      <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={24} />
+                        تسجيل واستلام الجهاز
+                      </>
+                    )}
+                  </button>
                </form>
             </div>
           )}

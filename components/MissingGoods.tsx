@@ -56,9 +56,10 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
     const syncAutomaticMissing = async () => {
       if (!shopId || loading) return;
       
-      const outOfStock = products.filter(p => p.stock === 0);
+      // نبهني لما يتبقي حتتين أو أقل عشان نلحق نجيب غيرها
+      const lowStock = products.filter(p => p.stock <= 2);
       
-      for (const product of outOfStock) {
+      for (const product of lowStock) {
         const alreadyExists = missingItems.some(item => item.name === product.name);
         if (!alreadyExists) {
           const newItem = {
@@ -242,13 +243,14 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
                               <div>
                                  <div className="font-black text-slate-800 dark:text-white text-sm flex items-center gap-2 justify-end">
                                     {item.name}
-                                    {item.is_automatic && <span className="bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse">تلقائي</span>}
+                                    {item.is_automatic && <span className="bg-orange-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse">نقص حاد</span>}
                                  </div>
-                                 <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-                                    {new Date(item.created_at).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}
+                                 <div className="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-1 justify-end">
+                                    {item.is_automatic ? 'كمية منخفضة جداً في المخزن' : 'مضافة يدوياً'}
+                                    <AlertCircle size={10} />
                                  </div>
                               </div>
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.is_automatic ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.is_automatic ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
                                  {item.is_automatic ? <AlertCircle size={20} /> : <Package size={20} />}
                               </div>
                            </div>

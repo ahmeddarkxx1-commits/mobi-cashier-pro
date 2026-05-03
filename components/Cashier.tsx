@@ -30,6 +30,11 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   const [debtCustomerPhone, setDebtCustomerPhone] = useState('');
   const [debtPaidAmount, setDebtPaidAmount] = useState<number>(0);
 
+  const customCategories = useMemo(() => {
+    const saved = localStorage.getItem(`shop_categories_${shopId}`);
+    return saved ? JSON.parse(saved) : ['phone', 'charger', 'cable', 'accessory'];
+  }, [shopId]);
+
   const partCategories = useMemo(() => {
     const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
     return saved ? JSON.parse(saved) : ['part'];
@@ -209,29 +214,45 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Sub-Categories for Goods */}
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-            {[
-              { id: 'all', label: 'الكل', icon: Package },
-              { id: 'phone', label: 'موبايلات', icon: Smartphone },
-              { id: 'charger', label: 'شواحن', icon: Zap },
-              { id: 'cable', label: 'كابلات', icon: Zap },
-              { id: 'wired_earphone', label: 'سماعات سلك', icon: Headset },
-              { id: 'bluetooth_earphone', label: 'سماعات بلوتوث', icon: Headset },
-              { id: 'headphone', label: 'هيدفون', icon: Headset },
-              { id: 'accessory', label: 'إكسسوارات أخرى', icon: Laptop }
-            ].map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id as any)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all border ${
-                  selectedCategory === cat.id 
-                    ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 shadow-md' 
-                    : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-blue-500'
-                }`}
-              >
-                <cat.icon size={14} />
-                {cat.label}
-              </button>
-            ))}
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all border shrink-0 ${
+                selectedCategory === 'all' 
+                  ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 shadow-md' 
+                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-blue-500'
+              }`}
+            >
+              <Package size={14} />
+              الكل
+            </button>
+            {customCategories.map(cat => {
+              const CATEGORY_MAP: Record<string, { label: string, icon: string }> = {
+                phone: { label: 'موبايلات', icon: '📱' },
+                charger: { label: 'شواحن', icon: '🔌' },
+                cable: { label: 'كابلات', icon: '🔌' },
+                wired_earphone: { label: 'سماعات سلك', icon: '🎧' },
+                bluetooth_earphone: { label: 'سماعات بلوتوث', icon: '📶' },
+                headphone: { label: 'هيدفون', icon: '🎚️' },
+                accessory: { label: 'إكسسوارات', icon: '✨' },
+                electronic: { label: 'إلكترونيات', icon: '⚡' }
+              };
+              const item = CATEGORY_MAP[cat] || { label: cat, icon: '📦' };
+              
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat as any)}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all border shrink-0 ${
+                    selectedCategory === cat 
+                      ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 shadow-md scale-105' 
+                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-blue-500'
+                  }`}
+                >
+                  <span className="text-sm">{item.icon}</span>
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
 
           <div className="relative group">
