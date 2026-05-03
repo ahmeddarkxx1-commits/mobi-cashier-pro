@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, LogOut, Store, Users, Plus, Trash2, StopCircle, CheckCircle, X, Sparkles, Settings, Phone, Mail, Clock, ChevronDown, ChevronUp, RefreshCw, UserPlus, Send, Bell } from 'lucide-react';
+import { ShieldCheck, LogOut, Store, Users, Plus, Trash2, StopCircle, CheckCircle, X, Sparkles, Settings, Phone, Mail, Clock, ChevronDown, ChevronUp, RefreshCw, UserPlus, Send, Bell, Database, Download, Upload, ShieldAlert } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import Swal from 'sweetalert2';
 
@@ -26,6 +26,8 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [globalNotify, setGlobalNotify] = useState({ title: '', message: '', type: 'info' });
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState('');
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isBackupLoading, setIsBackupLoading] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setAdminEmail(data.user.email || null);
@@ -344,6 +346,73 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     setIsSubmitting(false);
   };
 
+  const handleBackupAllData = async () => {
+    setIsBackupLoading(true);
+    try {
+      const tables = ['shops', 'products', 'transactions', 'debts', 'missing_goods', 'maintenance_records', 'app_config', 'profiles'];
+      const backupData: any = { timestamp: new Date().toISOString(), data: {} };
+
+      for (const table of tables) {
+        const { data, error } = await supabase.from(table).select('*');
+        if (!error) backupData.data[table] = data;
+      }
+
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `MobiCashierPro_FullBackup_${new Date().toLocaleDateString().replace(/\//g, '-')}.json`;
+      link.click();
+      
+      Swal.fire({ icon: 'success', title: 'تم تحميل النسخة الاحتياطية بنجاح!', background: '#0f172a', color: '#fff' });
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'فشل النسخ الاحتياطي', background: '#0f172a', color: '#fff' });
+    }
+    setIsBackupLoading(false);
+  };
+
+  const handleRestoreData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await Swal.fire({
+      title: 'هل أنت متأكد من الاسترجاع؟',
+      text: 'هذه العملية ستقوم بتحديث كافة البيانات الحالية ببيانات الملف المرفوع. تأكد أنك رفعت الملف الصحيح!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'نعم، ابدأ الاسترجاع',
+      cancelButtonText: 'إلغاء',
+      confirmButtonColor: '#ef4444',
+      background: '#0f172a',
+      color: '#fff'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsBackupLoading(true);
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      
+      if (!backup.data || !backup.timestamp) throw new Error('ملف غير صالح');
+
+      for (const table in backup.data) {
+        const rows = backup.data[table];
+        if (rows && rows.length > 0) {
+          const { error } = await supabase.from(table).upsert(rows);
+          if (error) console.error(`Restore error in ${table}:`, error.message);
+        }
+      }
+
+      Swal.fire({ icon: 'success', title: 'تم استرجاع البيانات بنجاح!', background: '#0f172a', color: '#fff' });
+      fetchTenants();
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'فشل الاسترجاع', text: 'تأكد من أن الملف سليم وصالح للاستخدام.', background: '#0f172a', color: '#fff' });
+    }
+    setIsBackupLoading(false);
+    e.target.value = ''; // Reset input
+  };
+
   const filtered = tenants.filter(t =>
     (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (t.owner_email || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -419,16 +488,20 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           {/* Global Controls - Improved for Mobile */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-              <div className="grid grid-cols-1 sm:flex sm:items-center gap-3">
-                <button onClick={() => setIsNotifyModalOpen(true)} className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-500/20 text-sm">
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-3">
+                <button onClick={() => setIsNotifyModalOpen(true)} className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-blue-500/20 text-xs sm:text-sm">
                   <Send size={16} />
                   بث إشعار
                 </button>
-                <button onClick={handleSetGlobalMessage} className="flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-amber-500/20 text-sm">
+                <button onClick={handleSetGlobalMessage} className="flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white font-black rounded-2xl transition-all shadow-lg shadow-amber-500/20 text-xs sm:text-sm">
                   <Bell size={16} />
-                  رسالة هامة (Alert)
+                  رسالة هامة
                 </button>
-                <button onClick={handleToggleMaintenance} className={`flex items-center justify-center gap-2 px-6 py-3 ${maintenanceMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'} rounded-2xl font-black text-sm transition-all`}
+                <button onClick={() => setIsBackupModalOpen(true)} className="flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 text-xs sm:text-sm">
+                  <Database size={16} />
+                  النسخ الاحتياطي
+                </button>
+                <button onClick={handleToggleMaintenance} className={`flex items-center justify-center gap-2 px-6 py-3 ${maintenanceMode ? 'bg-amber-600 hover:bg-amber-500' : 'bg-slate-800 hover:bg-slate-700'} rounded-2xl font-black text-xs sm:text-sm transition-all`}
                 >
                   {maintenanceMode ? <CheckCircle size={16} /> : <StopCircle size={16} />}
                   {maintenanceMode ? 'إلغاء الصيانة' : 'وضع الصيانة'}
@@ -775,6 +848,77 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                 {isSubmitting ? 'جاري البث...' : '🚀 إرسال الآن'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Backup & Security Modal */}
+      {isBackupModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden relative">
+            {isBackupLoading && (
+              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-4">
+                <RefreshCw className="text-emerald-500 animate-spin" size={40} />
+                <p className="font-black text-emerald-400 animate-pulse text-lg">جاري معالجة البيانات...</p>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black flex items-center gap-2 text-right">
+                <Database size={20} className="text-emerald-400" />
+                مركز النسخ الاحتياطي والأمان
+              </h3>
+              <button onClick={() => setIsBackupModalOpen(false)} className="p-2 bg-slate-800 rounded-xl"><X size={18} /></button>
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-2xl space-y-3">
+                <div className="flex items-start gap-3">
+                  <Download className="text-emerald-400 shrink-0 mt-1" size={20} />
+                  <div className="text-right">
+                    <h4 className="font-black text-sm text-emerald-400">تصدير نسخة كاملة</h4>
+                    <p className="text-[10px] text-slate-400 font-bold mt-1 leading-relaxed">سيتم تحميل ملف JSON يحتوي على كافة (المحلات، المنتجات، المبيعات، الديون، الصيانة) لجميع المستخدمين.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleBackupAllData}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  تحميل ملف النسخة الاحتياطية (.json)
+                </button>
+              </div>
+
+              <div className="bg-red-500/10 border border-red-500/20 p-5 rounded-2xl space-y-3">
+                <div className="flex items-start gap-3">
+                  <Upload className="text-red-400 shrink-0 mt-1" size={20} />
+                  <div className="text-right">
+                    <h4 className="font-black text-sm text-red-400">استرجاع البيانات (خطر ⚠️)</h4>
+                    <p className="text-[10px] text-slate-400 font-bold mt-1 leading-relaxed">ارفع ملف النسخة الاحتياطية الذي قمت بتحميله مسبقاً. سيتم تحديث البيانات الحالية ببيانات الملف.</p>
+                  </div>
+                </div>
+                <label className="block">
+                  <input 
+                    type="file" 
+                    accept=".json" 
+                    onChange={handleRestoreData} 
+                    className="hidden" 
+                    id="restore-input"
+                  />
+                  <div 
+                    onClick={() => document.getElementById('restore-input')?.click()}
+                    className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 border-dashed py-3 rounded-xl text-xs font-black text-center cursor-pointer transition-all"
+                  >
+                    اختر ملف الاسترجاع وارفعه
+                  </div>
+                </label>
+              </div>
+
+              <div className="bg-slate-800/50 p-4 rounded-xl flex items-center gap-3">
+                <ShieldAlert className="text-slate-500 shrink-0" size={18} />
+                <p className="text-[9px] text-slate-500 font-bold leading-relaxed text-right">
+                  هذه الميزة متاحة للسوبر أدمن فقط. يرجى الاحتفاظ بالنسخ الاحتياطية في مكان آمن ومشفر.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -155,9 +155,12 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       .order('date', { ascending: false })
       .limit(5);
 
-    // 3. Merge and map them to a uniform format
+    // 3. Merge and map them to a uniform format, filtering out duplicates
+    // If a transaction has 0 amount and we have a debt for it, we only show the debt
     const merged = [
-      ...(transData || []).map(t => ({ ...t, isDebt: false })),
+      ...(transData || [])
+        .filter(t => t.amount > 0 || !t.description.includes('آجل')) // Skip 0-amount placeholder transactions
+        .map(t => ({ ...t, isDebt: false })),
       ...(debtData || []).map(d => ({ ...d, isDebt: true, medium: 'deferred' }))
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
      .slice(0, 8);
@@ -253,17 +256,6 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
           type: 'sale',
           shop_id: shopId
         }, shopId);
-        
-        // Record as transaction too so it shows in history
-        addTransaction({
-          type: 'maintenance',
-          medium: 'cash',
-          amount: 0, // 0 because no cash received yet
-          cost: part.cost,
-          profit: 0,
-          description: `بيع قطعة غيار (آجل): ${part.name} للمحل: ${debtorName}`,
-          category: 'maintenance'
-        });
         
         addNotification(`تم تسجيل دين بمبلغ ${partsSalePrice} ج على ${debtorName}`, 'warning');
       } else {
