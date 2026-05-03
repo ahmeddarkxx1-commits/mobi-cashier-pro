@@ -70,10 +70,14 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   const partCategories = useMemo(() => {
     const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
-    return saved ? JSON.parse(saved) : ['part'];
+    return saved ? JSON.parse(saved) : ['part', 'شاشات', 'فلاتات', 'بطاريات'];
   }, [shopId]);
 
-  const isPart = (cat: string) => partCategories.includes(cat);
+  const isPart = (cat: string) => {
+    const categoryName = (cat || '').toLowerCase();
+    const partKeywords = ['part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة'];
+    return partCategories.includes(cat) || partKeywords.some(k => categoryName.includes(k));
+  };
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
 
@@ -112,9 +116,13 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const activeJobs = useMemo(() => (jobs || []).filter(j => j && j.status !== 'delivered'), [jobs]);
 
   const filteredPartsForSale = useMemo(() => {
+    if (!partsSearchTerm.trim()) return [];
     return (products || []).filter(p => 
-      p && (isPart(p.category) || p.category === 'accessory') &&
-      (p.name || '').toLowerCase().includes((partsSearchTerm || '').toLowerCase())
+      p && (isPart(p.category) || p.category === 'accessory' || p.category === 'phone') &&
+      (
+        (p.name || '').toLowerCase().includes(partsSearchTerm.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(partsSearchTerm.toLowerCase())
+      )
     );
   }, [products, partsSearchTerm, partCategories]);
 
@@ -553,9 +561,14 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                         >
                           <div className="flex flex-col items-end">
                             <span className="font-black text-sm">{item.name}</span>
-                            <span className={`text-[10px] font-bold ${selectedPartId === item.id ? 'text-blue-100' : 'text-slate-400'}`}>
-                              متاح: {item.stock} حتة | جملة: {item.wholesale_price || 0} ج
-                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black ${selectedPartId === item.id ? 'bg-blue-400 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
+                                {item.category}
+                              </span>
+                              <span className={`text-[10px] font-bold ${selectedPartId === item.id ? 'text-blue-100' : 'text-slate-400'}`}>
+                                متاح: {item.stock} حتة | جملة: {item.wholesale_price || 0} ج
+                              </span>
+                            </div>
                           </div>
                           {selectedPartId === item.id && <CheckCircle2 size={18} />}
                         </button>
@@ -718,7 +731,10 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
             ) : (
                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {(maintenanceParts || [])
-                    .filter(p => p && (p.name || '').toLowerCase().includes((workshopPartsSearch || '').toLowerCase()))
+                    .filter(p => p && (
+                      (p.name || '').toLowerCase().includes((workshopPartsSearch || '').toLowerCase()) ||
+                      (p.category || '').toLowerCase().includes((workshopPartsSearch || '').toLowerCase())
+                    ))
                     .sort((a, b) => (a.stock || 0) - (b.stock || 0)) // Low stock first
                     .map(part => (
                     <div 
@@ -732,7 +748,10 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                       {part.stock <= 2 && (
                         <div className="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 rounded-br-xl text-[8px] font-black uppercase">ناقص</div>
                       )}
-                      <div className="text-right font-black text-slate-800 dark:text-white truncate text-sm" title={part.name}>{part.name}</div>
+                      <div className="text-right">
+                        <div className="font-black text-slate-800 dark:text-white truncate text-sm mb-1" title={part.name}>{part.name}</div>
+                        <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[9px] px-2 py-0.5 rounded-lg font-black">{part.category}</span>
+                      </div>
                       <div className="flex items-center justify-between">
                          <span className="text-xs font-bold text-slate-500">الرصيد:</span>
                          <div className="flex items-center gap-2">

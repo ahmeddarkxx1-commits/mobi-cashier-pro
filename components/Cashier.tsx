@@ -69,11 +69,31 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     syncCategories();
   }, [shopId]);
 
-  const isPart = (cat: string) => partCategories.includes(cat);
+  const getCategoryLabel = (cat: string) => {
+    const CATEGORY_MAP: Record<string, string> = {
+      phone: 'موبايل',
+      charger: 'شاحن',
+      cable: 'كابل',
+      wired_earphone: 'سماعة سلك',
+      bluetooth_earphone: 'سماعة بلوتوث',
+      headphone: 'هيدفون',
+      accessory: 'إكسسوار',
+      electronic: 'إلكترونيات',
+      part: 'قطعة غيار'
+    };
+    return CATEGORY_MAP[cat] || cat;
+  };
+
+  const isPart = (cat: string) => {
+    const categoryName = (cat || '').toLowerCase();
+    const partKeywords = ['part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة'];
+    return partCategories.includes(cat) || partKeywords.some(k => categoryName.includes(k));
+  };
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
       !isPart(p.category) &&
+      p.category !== 'part' && 
       p.stock > 0 && 
       (selectedCategory === 'all' || p.category === selectedCategory) &&
       (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.includes(searchTerm))
@@ -307,7 +327,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
                 </div>
                 
                 <div className="flex-1 space-y-1">
-                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{p.category === 'phone' ? 'موبايل' : 'إكسسوار'}</div>
+                   <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getCategoryLabel(p.category)}</div>
                    <div className="font-black text-gray-800 dark:text-white truncate text-base">{p.name}</div>
                    <div className="text-green-600 font-black text-lg">{p.price.toLocaleString()} ج</div>
                 </div>
