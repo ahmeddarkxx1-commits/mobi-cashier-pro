@@ -30,14 +30,21 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   const [debtCustomerPhone, setDebtCustomerPhone] = useState('');
   const [debtPaidAmount, setDebtPaidAmount] = useState<number>(0);
 
+  const partCategories = useMemo(() => {
+    const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
+    return saved ? JSON.parse(saved) : ['part'];
+  }, [shopId]);
+
+  const isPart = (cat: string) => partCategories.includes(cat);
+
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
-      p.category !== 'part' &&
+      !isPart(p.category) &&
       p.stock > 0 && 
       (selectedCategory === 'all' || p.category === selectedCategory) &&
       (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.includes(searchTerm))
     );
-  }, [products, searchTerm, selectedCategory]);
+  }, [products, searchTerm, selectedCategory, partCategories]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {

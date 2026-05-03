@@ -22,7 +22,8 @@ import {
   CreditCard,
   X,
   CheckCircle2,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { MaintenanceJob, Transaction, Product, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
@@ -65,6 +66,14 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const [selectedParts, setSelectedParts] = useState<Record<string, string>>({});
   const [isWholesale, setIsWholesale] = useState(false);
   const [partsSearchTerm, setPartsSearchTerm] = useState('');
+  const [workshopPartsSearch, setWorkshopPartsSearch] = useState('');
+
+  const partCategories = useMemo(() => {
+    const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
+    return saved ? JSON.parse(saved) : ['part'];
+  }, [shopId]);
+
+  const isPart = (cat: string) => partCategories.includes(cat);
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
 
@@ -95,19 +104,19 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     }
   };
 
-  const maintenanceParts = useMemo(() => products.filter(p => p.category === 'part'), [products]);
-  const pendingCount = useMemo(() => jobs.filter(j => j.status === 'pending').length, [jobs]);
-  const readyToDeliverCount = useMemo(() => jobs.filter(j => j.status === 'completed').length, [jobs]);
+  const maintenanceParts = useMemo(() => (products || []).filter(p => p && p.category && isPart(p.category)), [products, partCategories]);
+  const pendingCount = useMemo(() => (jobs || []).filter(j => j && j.status === 'pending').length, [jobs]);
+  const readyToDeliverCount = useMemo(() => (jobs || []).filter(j => j && j.status === 'completed').length, [jobs]);
   
-  const readyToDeliver = useMemo(() => jobs.filter(j => j.status === 'completed'), [jobs]);
-  const activeJobs = useMemo(() => jobs.filter(j => j.status !== 'delivered'), [jobs]);
+  const readyToDeliver = useMemo(() => (jobs || []).filter(j => j && j.status === 'completed'), [jobs]);
+  const activeJobs = useMemo(() => (jobs || []).filter(j => j && j.status !== 'delivered'), [jobs]);
 
   const filteredPartsForSale = useMemo(() => {
-    return products.filter(p => 
-      (p.category === 'part' || p.category === 'accessory') &&
-      p.name.toLowerCase().includes(partsSearchTerm.toLowerCase())
+    return (products || []).filter(p => 
+      p && (isPart(p.category) || p.category === 'accessory') &&
+      (p.name || '').toLowerCase().includes((partsSearchTerm || '').toLowerCase())
     );
-  }, [products, partsSearchTerm]);
+  }, [products, partsSearchTerm, partCategories]);
 
   const addNotification = (message: string, type: Notification['type'] = 'info') => {
     if (type === 'success') toast.success(message);
@@ -667,21 +676,56 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
       {activeTab === 'parts' && (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
-            <h3 className="text-xl font-black mb-6 text-right flex items-center gap-2 justify-end">جرد قطع الغيار للورشة <Package size={20}/></h3>
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+               <div className="relative w-full sm:w-64">
+                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="ابحث في قطع الغيار..." 
+                    className="w-full pr-10 pl-4 py-3 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-right font-bold text-xs outline-none focus:border-blue-500 transition-all"
+                    value={workshopPartsSearch}
+                    onChange={(e) => setWorkshopPartsSearch(e.target.value)}
+                  />
+               </div>
+               <h3 className="text-xl font-black text-right flex items-center gap-2 justify-end">جرد قطع الغيار للورشة <Package size={20}/></h3>
+            </div>
+
+            {(maintenanceParts || []).filter(p => p && (p.stock || 0) <= 2).length > 0 && (
+              <div className="bg-red-50 dark:bg-red-900/10 p-4 rounded-2xl border border-red-100 dark:border-red-900/20 flex items-center justify-between gap-4 animate-pulse">
+                <span className="font-black text-red-600 dark:text-red-400 text-sm">{(maintenanceParts || []).filter(p => p && (p.stock || 0) <= 2).length} قطع قربت تخلص!</span>
+                <AlertCircle className="text-red-500" size={20} />
+              </div>
+            )}
             
-            {maintenanceParts.length === 0 ? (
+            {(!maintenanceParts || maintenanceParts.length === 0) ? (
                <div className="text-center py-10 text-slate-400 font-bold">
                  مفيش قطع غيار متسجلة للورشة. ممكن تضيفها من شاشة (المخزن والبضاعة) باختيار قسم "قطع غيار صيانة".
                </div>
             ) : (
                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {maintenanceParts.map(part => (
-                    <div key={part.id} className="bg-slate-50 dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700 flex flex-col justify-between gap-4">
-                      <div className="text-right font-black text-slate-800 dark:text-white truncate" title={part.name}>{part.name}</div>
+                  {(maintenanceParts || [])
+                    .filter(p => p && (p.name || '').toLowerCase().includes((workshopPartsSearch || '').toLowerCase()))
+                    .sort((a, b) => (a.stock || 0) - (b.stock || 0)) // Low stock first
+                    .map(part => (
+                    <div 
+                      key={part.id} 
+                      className={`p-5 rounded-3xl border flex flex-col justify-between gap-4 transition-all relative overflow-hidden ${
+                        part.stock <= 2 
+                        ? 'bg-red-50 dark:bg-red-900/5 border-red-200 dark:border-red-900/30 shadow-lg shadow-red-500/10' 
+                        : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700'
+                      }`}
+                    >
+                      {part.stock <= 2 && (
+                        <div className="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 rounded-br-xl text-[8px] font-black uppercase">ناقص</div>
+                      )}
+                      <div className="text-right font-black text-slate-800 dark:text-white truncate text-sm" title={part.name}>{part.name}</div>
                       <div className="flex items-center justify-between">
-                         <span className="text-sm font-bold text-slate-500">الرصيد:</span>
-                         <span className={`text-xl font-black ${part.stock > 0 ? 'text-green-600' : 'text-red-500'}`}>{part.stock}</span>
+                         <span className="text-xs font-bold text-slate-500">الرصيد:</span>
+                         <div className="flex items-center gap-2">
+                            {part.stock <= 2 && <AlertCircle size={14} className="text-red-500" />}
+                            <span className={`text-xl font-black ${part.stock > 2 ? 'text-green-600' : 'text-red-500'}`}>{part.stock}</span>
+                         </div>
                       </div>
                     </div>
                   ))}

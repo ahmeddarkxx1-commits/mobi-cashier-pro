@@ -43,7 +43,7 @@ export interface Product {
   price: number; 
   wholesale_price: number;
   cost: number;  
-  category: 'phone' | 'charger' | 'cable' | 'wired_earphone' | 'bluetooth_earphone' | 'headphone' | 'accessory' | 'part' | 'electronic';
+  category: string;
   stock: number;
   image?: string;
   shop_id: string;
