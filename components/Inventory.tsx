@@ -64,7 +64,6 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
           .single();
 
         if (error) {
-          // If column settings doesn't exist or other error, fallback to localStorage
           console.warn('Sync failed, using local storage:', error.message);
           const localCats = localStorage.getItem(`shop_categories_${shopId}`);
           const localParts = localStorage.getItem(`shop_part_categories_${shopId}`);
@@ -73,12 +72,47 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
           return;
         }
 
-        if (data?.settings?.categories) {
-          setCustomCategories(data.settings.categories);
+        const currentSettings = data?.settings || {};
+        let needsUpdate = false;
+        const newSettings = { ...currentSettings };
+
+        // 1. Sync Custom Categories
+        if (currentSettings.categories && currentSettings.categories.length > 0) {
+          setCustomCategories(currentSettings.categories);
+          localStorage.setItem(`shop_categories_${shopId}`, JSON.stringify(currentSettings.categories));
+        } else {
+          const localCats = localStorage.getItem(`shop_categories_${shopId}`);
+          if (localCats) {
+            const parsed = JSON.parse(localCats);
+            if (parsed.length > 0) {
+              setCustomCategories(parsed);
+              newSettings.categories = parsed;
+              needsUpdate = true;
+            }
+          }
         }
-        if (data?.settings?.part_categories) {
-          setPartCategories(data.settings.part_categories);
+
+        // 2. Sync Part Categories
+        if (currentSettings.part_categories && currentSettings.part_categories.length > 0) {
+          setPartCategories(currentSettings.part_categories);
+          localStorage.setItem(`shop_part_categories_${shopId}`, JSON.stringify(currentSettings.part_categories));
+        } else {
+          const localParts = localStorage.getItem(`shop_part_categories_${shopId}`);
+          if (localParts) {
+            const parsed = JSON.parse(localParts);
+            if (parsed.length > 0) {
+              setPartCategories(parsed);
+              newSettings.part_categories = parsed;
+              needsUpdate = true;
+            }
+          }
         }
+
+        if (needsUpdate) {
+          await supabase.from('shops').update({ settings: newSettings }).eq('id', shopId);
+          console.log('Local categories migrated to cloud successfully.');
+        }
+
       } catch (err) {
         console.error('Category Sync Error:', err);
       }
