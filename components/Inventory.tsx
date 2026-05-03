@@ -42,20 +42,50 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     'بطاريات': '🔋'
   };
 
-  const [customCategories, setCustomCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`shop_categories_${shopId}`);
-    return saved ? JSON.parse(saved) : ['phone', 'charger', 'cable', 'wired_earphone', 'bluetooth_earphone', 'headphone', 'accessory', 'electronic'];
-  });
-
-  const [partCategories, setPartCategories] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
-    return saved ? JSON.parse(saved) : ['part'];
-  });
+  const [customCategories, setCustomCategories] = useState<string[]>(['phone', 'charger', 'cable', 'wired_earphone', 'bluetooth_earphone', 'headphone', 'accessory', 'electronic']);
+  const [partCategories, setPartCategories] = useState<string[]>(['part', 'شاشات', 'فلاتات', 'بطاريات']);
 
   const [showCatManager, setShowCatManager] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [newCatType, setNewCatType] = useState<'general' | 'part'>('general');
   const [activeGroup, setActiveGroup] = useState<'phones' | 'accessories' | 'parts'>('accessories');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Sync Categories from Supabase
+  React.useEffect(() => {
+    if (!shopId) return;
+    
+    const syncCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('shops')
+          .select('settings')
+          .eq('id', shopId)
+          .single();
+
+        if (error) {
+          // If column settings doesn't exist or other error, fallback to localStorage
+          console.warn('Sync failed, using local storage:', error.message);
+          const localCats = localStorage.getItem(`shop_categories_${shopId}`);
+          const localParts = localStorage.getItem(`shop_part_categories_${shopId}`);
+          if (localCats) setCustomCategories(JSON.parse(localCats));
+          if (localParts) setPartCategories(JSON.parse(localParts));
+          return;
+        }
+
+        if (data?.settings?.categories) {
+          setCustomCategories(data.settings.categories);
+        }
+        if (data?.settings?.part_categories) {
+          setPartCategories(data.settings.part_categories);
+        }
+      } catch (err) {
+        console.error('Category Sync Error:', err);
+      }
+    };
+
+    syncCategories();
+  }, [shopId]);
 
   const GROUPS = [
     { id: 'phones', label: 'موبايلات', icon: '📱', color: 'bg-blue-50 text-blue-600 border-blue-100' },
@@ -70,13 +100,39 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     return [];
   };
 
-  const saveCategories = (cats: string[], type: 'general' | 'part') => {
+  const saveCategories = async (cats: string[], type: 'general' | 'part') => {
+    let newCustom = customCategories;
+    let newParts = partCategories;
+
     if (type === 'general') {
+      newCustom = cats;
       setCustomCategories(cats);
       localStorage.setItem(`shop_categories_${shopId}`, JSON.stringify(cats));
     } else {
+      newParts = cats;
       setPartCategories(cats);
       localStorage.setItem(`shop_part_categories_${shopId}`, JSON.stringify(cats));
+    }
+
+    // Attempt to sync with Supabase
+    if (shopId) {
+      try {
+        const { data: currentShop } = await supabase.from('shops').select('settings').eq('id', shopId).single();
+        const currentSettings = currentShop?.settings || {};
+        
+        await supabase
+          .from('shops')
+          .update({ 
+            settings: { 
+              ...currentSettings,
+              categories: newCustom,
+              part_categories: newParts
+            } 
+          })
+          .eq('id', shopId);
+      } catch (err) {
+        console.error('Failed to sync categories to cloud:', err);
+      }
     }
   };
 
@@ -126,26 +182,29 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   });
 
   const stats = useMemo(() => {
-    const summary: Record<string, { count: number, totalCost: number, totalRetail: number }> = {};
+    const categorySummary: Record<string, { count: number; totalCost: number; totalRetail: number; totalWholesale: number }> = {};
     let grandTotalCost = 0;
     let grandTotalRetail = 0;
+    let grandTotalWholesale = 0;
     let grandTotalItems = 0;
 
     (products || []).forEach(p => {
-      if (!summary[p.category]) {
-        summary[p.category] = { count: 0, totalCost: 0, totalRetail: 0 };
+      if (!categorySummary[p.category]) {
+        categorySummary[p.category] = { count: 0, totalCost: 0, totalRetail: 0, totalWholesale: 0 };
       }
       const qty = p.stock || 0;
-      summary[p.category].count += qty;
-      summary[p.category].totalCost += (p.cost || 0) * qty;
-      summary[p.category].totalRetail += (p.price || 0) * qty;
+      categorySummary[p.category].count += qty;
+      categorySummary[p.category].totalCost += (p.cost || 0) * qty;
+      categorySummary[p.category].totalRetail += (p.price || 0) * qty;
+      categorySummary[p.category].totalWholesale += (p.wholesale_price || p.price || 0) * qty;
 
       grandTotalCost += (p.cost || 0) * qty;
       grandTotalRetail += (p.price || 0) * qty;
+      grandTotalWholesale += (p.wholesale_price || p.price || 0) * qty;
       grandTotalItems += qty;
     });
 
-    return { categorySummary: summary, grandTotalCost, grandTotalRetail, grandTotalItems };
+    return { categorySummary, grandTotalCost, grandTotalRetail, grandTotalWholesale, grandTotalItems };
   }, [products]);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -280,8 +339,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                     <span className="text-gray-400">قيمة التكلفة:</span>
                     <span className="font-black text-slate-600 dark:text-slate-400">{data.totalCost.toLocaleString()} ج</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">قيمة البيع:</span>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-gray-400">قيمة الجملة:</span>
+                    <span className="font-black text-amber-600">{data.totalWholesale.toLocaleString()} ج</span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-gray-400">قيمة القطاعي:</span>
                     <span className="font-black text-green-600">{data.totalRetail.toLocaleString()} ج</span>
                   </div>
                 </div>

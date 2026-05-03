@@ -48,40 +48,54 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
 
-  const [transferSettings, setTransferSettings] = useState<TransferSetting[]>(() => {
-    const saved = localStorage.getItem('transferSettings');
-    let parsed = saved ? JSON.parse(saved) : null;
-    if (parsed && parsed.length > 0) {
-       parsed = parsed.map((s: any) => {
-          if (s.companyFeeRate === undefined) {
-             s.companyFeeRate = s.operator === 'فودافون' ? 0 : (s.operator === 'إنستا باي' ? 0 : 5);
-             s.companyFeeMax = s.operator === 'فودافون' ? 0 : (s.operator === 'إنستا باي' ? 0 : 15);
-             if (s.receiveRate <= 2) s.receiveRate = 15;
-          }
-          return s;
-       });
-       return parsed;
-    }
-    
-    const vfRules = [
-      { label: 'فكة 13 (2.5ج رصيد)', cardValue: 13, costPrice: 9.5 },
-      { label: 'فكة 16.5 (4ج رصيد)', cardValue: 16.5, costPrice: 12 },
-      { label: 'فكة 19.5 (5.5ج رصيد)', cardValue: 19.5, costPrice: 14 },
-      { label: 'فكة 26 (9ج رصيد)', cardValue: 26, costPrice: 19 },
-      { label: 'فكة 38 (12.5ج رصيد)', cardValue: 38, costPrice: 28 },
-      { label: 'فكة 65 (25ج رصيد)', cardValue: 65, costPrice: 50 }
-    ];
-
-    return [
-      { operator: 'فودافون', sendRate: 10, companyFeeRate: 0, companyFeeMax: 0, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
-      { operator: 'اتصالات', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
-      { operator: 'أورانج', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
-      { operator: 'وي', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
-      { operator: 'إنستا باي', sendRate: 0, companyFeeRate: 0, companyFeeMax: 0, isSendTiered: false, fixedFeeLow: 0, fixedFeeHigh: 0, feeThreshold: 0, receiveRate: 0, rechargeRules: [], creditMultiplier: 1.0 }
-    ];
-  });
+  const [transferSettings, setTransferSettings] = useState<TransferSetting[]>([]);
 
   const [shopId, setShopId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!tenantId && !shopId) return;
+    const sid = tenantId || shopId;
+
+    const syncAllSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('shops')
+          .select('settings')
+          .eq('id', sid)
+          .single();
+
+        if (error) throw error;
+
+        if (data?.settings?.transferSettings) {
+          setTransferSettings(data.settings.transferSettings);
+        } else {
+          // Default settings if none in DB
+          const vfRules = [
+            { label: 'فكة 13 (2.5ج رصيد)', cardValue: 13, costPrice: 9.5 },
+            { label: 'فكة 16.5 (4ج رصيد)', cardValue: 16.5, costPrice: 12 },
+            { label: 'فكة 19.5 (5.5ج رصيد)', cardValue: 19.5, costPrice: 14 },
+            { label: 'فكة 26 (9ج رصيد)', cardValue: 26, costPrice: 19 },
+            { label: 'فكة 38 (12.5ج رصيد)', cardValue: 38, costPrice: 28 },
+            { label: 'فكة 65 (25ج رصيد)', cardValue: 65, costPrice: 50 }
+          ];
+          setTransferSettings([
+            { operator: 'فودافون', sendRate: 10, companyFeeRate: 0, companyFeeMax: 0, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
+            { operator: 'اتصالات', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
+            { operator: 'أورانج', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
+            { operator: 'وي', sendRate: 10, companyFeeRate: 5, companyFeeMax: 15, isSendTiered: true, fixedFeeLow: 5, fixedFeeHigh: 15, feeThreshold: 3000, receiveRate: 15, rechargeRules: vfRules, creditMultiplier: 1.5 },
+            { operator: 'إنستا باي', sendRate: 0, companyFeeRate: 0, companyFeeMax: 0, isSendTiered: false, fixedFeeLow: 0, fixedFeeHigh: 0, feeThreshold: 0, receiveRate: 0, rechargeRules: [], creditMultiplier: 1.0 }
+          ]);
+        }
+      } catch (err) {
+        console.warn('Sync settings failed:', err);
+        // Fallback to local
+        const saved = localStorage.getItem('transferSettings');
+        if (saved) setTransferSettings(JSON.parse(saved));
+      }
+    };
+
+    syncAllSettings();
+  }, [tenantId, shopId]);
 
   // Heartbeat لإثبات التواجد (Online Status)
   useEffect(() => {

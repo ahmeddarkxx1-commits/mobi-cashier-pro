@@ -479,9 +479,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
           
           <div className="flex justify-end pt-4">
              <button 
-              onClick={() => {
+              onClick={async () => {
                 localStorage.setItem('transferSettings', JSON.stringify(settings));
-                alert('✅ تم حفظ جميع العمولات بنجاح!');
+                
+                if (shopId) {
+                  try {
+                    const { data: currentShop } = await supabase.from('shops').select('settings').eq('id', shopId).single();
+                    const currentSettings = currentShop?.settings || {};
+                    
+                    const { error } = await supabase
+                      .from('shops')
+                      .update({ 
+                        settings: { 
+                          ...currentSettings,
+                          transferSettings: settings 
+                        } 
+                      })
+                      .eq('id', shopId);
+                    
+                    if (error) throw error;
+                    alert('✅ تم حفظ العمولات وتزامنها مع السحابة بنجاح!');
+                  } catch (err) {
+                    console.error('Sync error:', err);
+                    alert('✅ تم الحفظ محلياً فقط! (مشكلة في المزامنة مع السحابة)');
+                  }
+                } else {
+                  alert('✅ تم حفظ العمولات محلياً!');
+                }
               }}
               className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-blue-500 shadow-lg shadow-blue-600/20 flex items-center gap-2"
              >

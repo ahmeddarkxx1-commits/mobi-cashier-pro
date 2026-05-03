@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, X, Smartphone, ArrowRightLeft, Zap, Banknote, Laptop, Headset, UserPlus, Package } from 'lucide-react';
 import { Product, Transaction, TransferSetting } from '../types';
@@ -30,14 +31,42 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   const [debtCustomerPhone, setDebtCustomerPhone] = useState('');
   const [debtPaidAmount, setDebtPaidAmount] = useState<number>(0);
 
-  const customCategories = useMemo(() => {
-    const saved = localStorage.getItem(`shop_categories_${shopId}`);
-    return saved ? JSON.parse(saved) : ['phone', 'charger', 'cable', 'accessory'];
-  }, [shopId]);
+  const [customCategories, setCustomCategories] = useState<string[]>(['phone', 'charger', 'cable', 'accessory']);
+  const [partCategories, setPartCategories] = useState<string[]>(['part', 'شاشات', 'فلاتات', 'بطاريات']);
 
-  const partCategories = useMemo(() => {
-    const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
-    return saved ? JSON.parse(saved) : ['part'];
+  // Sync Categories from Supabase
+  React.useEffect(() => {
+    if (!shopId) return;
+    
+    const syncCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('shops')
+          .select('settings')
+          .eq('id', shopId)
+          .single();
+
+        if (error) {
+          console.warn('Cashier Sync failed, using local storage:', error.message);
+          const localCats = localStorage.getItem(`shop_categories_${shopId}`);
+          const localParts = localStorage.getItem(`shop_part_categories_${shopId}`);
+          if (localCats) setCustomCategories(JSON.parse(localCats));
+          if (localParts) setPartCategories(JSON.parse(localParts));
+          return;
+        }
+
+        if (data?.settings?.categories) {
+          setCustomCategories(data.settings.categories);
+        }
+        if (data?.settings?.part_categories) {
+          setPartCategories(data.settings.part_categories);
+        }
+      } catch (err) {
+        console.error('Cashier Category Sync Error:', err);
+      }
+    };
+
+    syncCategories();
   }, [shopId]);
 
   const isPart = (cat: string) => partCategories.includes(cat);
