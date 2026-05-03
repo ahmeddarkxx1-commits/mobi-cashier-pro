@@ -364,8 +364,26 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
   };
 
   // حساب الخزنة (الكاش الفعلي في المحل)
+  const getLocalDateString = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const cashBalance = transactions.reduce((acc, t) => {
     if (t.medium === 'cash') {
+      const amt = Number(t.amount || 0);
+      return (t.type === 'expense') ? acc - amt : acc + amt;
+    }
+    return acc;
+  }, 0);
+
+  const todayStr = getLocalDateString();
+  const todayCashBalance = transactions.reduce((acc, t) => {
+    const tDate = new Date(t.date);
+    // Get local date parts
+    const tDateStr = `${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`;
+    
+    if (tDateStr === todayStr && t.medium === 'cash') {
       const amt = Number(t.amount || 0);
       return (t.type === 'expense') ? acc - amt : acc + amt;
     }
@@ -516,9 +534,9 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-xl border border-green-100 dark:border-green-900/30 shadow-sm transition-colors duration-300">
                <LayoutDashboard size={16} className="shrink-0 sm:hidden" />
-               <span className="hidden sm:inline text-[10px] sm:text-xs font-black">الخزنة (كاش):</span>
+               <span className="hidden sm:inline text-[10px] sm:text-xs font-black">الخزنة (اليوم):</span>
                <span className="font-black text-[11px] sm:text-sm tabular-nums" dir="ltr">
-                 {Math.round(cashBalance).toLocaleString()} ج
+                 {Math.round(todayCashBalance).toLocaleString()} ج
                </span>
             </div>
             

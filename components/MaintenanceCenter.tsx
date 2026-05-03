@@ -54,7 +54,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   userRole,
   shopId
 }) => {
-  const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts' | 'parts_sale'>('workshop');
+  const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts' | 'parts_sale' | 'quick'>('workshop');
   const [showAddJob, setShowAddJob] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -70,6 +70,8 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const [isWholesale, setIsWholesale] = useState(false);
   const [partsSearchTerm, setPartsSearchTerm] = useState('');
   const [workshopPartsSearch, setWorkshopPartsSearch] = useState('');
+  const [showQuickPartsList, setShowQuickPartsList] = useState(false);
+  const [focusedJobId, setFocusedJobId] = useState<string | null>(null);
 
   const partCategories = useMemo(() => {
     const saved = localStorage.getItem(`shop_part_categories_${shopId}`);
@@ -88,6 +90,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   };
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
+  const [quickJob, setQuickJob] = useState({ customerName: '', phoneModel: '', issue: '', cost: 0, partsUsed: [] as Product[] });
 
   const handleAddPartToJob = async (jobId: string, part: Product) => {
     const job = jobs.find(j => j.id === jobId);
@@ -434,24 +437,120 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       toast.error('فشل تحديث التكلفة');
     }
   };
+  const handleQuickDeliver = async () => {
+    if (!shopId || !quickJob.phoneModel) {
+      toast.error('أكمل بيانات الجهاز الأول!');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const partsNames = quickJob.partsUsed.map(p => p.name).join(', ');
+      const totalPartsCost = quickJob.partsUsed.reduce((acc, p) => acc + (p.cost || 0), 0);
+      
+      // 1. Create Job (Delivered)
+      const jobData: Omit<MaintenanceJob, 'id'> = {
+        customerName: quickJob.customerName || 'عميل نقدي',
+        customerPhone: '',
+        phoneModel: quickJob.phoneModel,
+        issue: quickJob.issue,
+        notes: 'صيانة سريعة تم تسليمها فوراً',
+        partsUsed: partsNames,
+        missingParts: '',
+        status: 'delivered',
+        date: new Date().toISOString(),
+        cost: Number(quickJob.cost),
+        paidAmount: Number(quickJob.cost),
+        shop_id: shopId
+      };
+
+      const { data: newJob } = await createMaintenanceJob(jobData, shopId);
+
+      // 2. Add Transaction
+      addTransaction({
+        type: 'maintenance',
+        medium: 'cash',
+        amount: Number(quickJob.cost),
+        profit: Number(quickJob.cost) - totalPartsCost,
+        cost: totalPartsCost,
+        description: `صيانة سريعة وتسليم: ${quickJob.phoneModel}`,
+        category: 'maintenance'
+      });
+
+      // 3. Deduct Stock
+      for (const part of quickJob.partsUsed) {
+        await updateProductStock(part.id, part.stock - 1);
+        setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock - 1 } : p));
+      }
+
+      if (newJob) setJobs([newJob, ...jobs]);
+      
+      setQuickJob({ customerName: '', phoneModel: '', issue: '', cost: 0, partsUsed: [] });
+      toast.success('تم تسجيل الصيانة واستلام الكاش بنجاح! 🚀');
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل في التسجيل السريع.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 font-['Cairo'] relative">
-      <div className="flex flex-wrap bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full gap-2">
-        <button onClick={() => setActiveTab('workshop')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'workshop' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-          <Wrench size={16} /> استلام جهاز (ورشة)
-          {userRole !== 'CASHIER' && pendingCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white animate-bounce">{pendingCount}</span>}
-        </button>
-        <button onClick={() => setActiveTab('pos')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'pos' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-          <Receipt size={16} /> تسليم أجهزة جاهزة
-          {readyToDeliverCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-green-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white">{readyToDeliverCount}</span>}
-        </button>
-        <button onClick={() => setActiveTab('parts_sale')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts_sale' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-          <ShoppingBag size={16} /> بيع قطع غيار
-        </button>
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <button 
+            onClick={() => setActiveTab('workshop')}
+            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'workshop' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-indigo-50 border border-slate-100 dark:border-slate-800'}`}
+          >
+            <div className={`p-2 rounded-xl ${activeTab === 'workshop' ? 'bg-white/20' : 'bg-indigo-50 dark:bg-indigo-900/20'}`}>
+              <Wrench size={20} />
+            </div>
+            استلام جهاز (ورشة)
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('pos')}
+            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 relative ${activeTab === 'pos' ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-emerald-50 border border-slate-100 dark:border-slate-800'}`}
+          >
+            <div className={`p-2 rounded-xl ${activeTab === 'pos' ? 'bg-white/20' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
+              <Receipt size={20} />
+            </div>
+            تسليم أجهزة جاهزة
+            {readyToDeliverCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-black animate-bounce shadow-lg border-2 border-white">
+                {readyToDeliverCount}
+              </span>
+            )}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('quick')}
+            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'quick' ? 'bg-amber-500 text-white shadow-xl shadow-amber-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-amber-50 border border-slate-100 dark:border-slate-800'}`}
+          >
+            <div className={`p-2 rounded-xl ${activeTab === 'quick' ? 'bg-white/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+              <Sparkles size={20} />
+            </div>
+            صيانة سريعة (كاش)
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('parts_sale')}
+            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'parts_sale' ? 'bg-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-blue-50 border border-slate-100 dark:border-slate-800'}`}
+          >
+            <div className={`p-2 rounded-xl ${activeTab === 'parts_sale' ? 'bg-white/20' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
+              <ShoppingBag size={20} />
+            </div>
+            بيع قطع غيار
+          </button>
+        </div>
+
         {userRole !== 'CASHIER' && (
-          <button onClick={() => setActiveTab('parts')} className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'parts' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-            <Package size={16} /> جرد القطع والنواقص
+          <button 
+            onClick={() => setActiveTab('parts')}
+            className={`w-full flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'parts' ? 'bg-slate-900 text-white shadow-xl scale-[1.02]' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200'}`}
+          >
+            <Package size={20} />
+            جرد القطع والنواقص (المخزن)
           </button>
         )}
       </div>
@@ -588,22 +687,25 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                         placeholder="ابحث عن قطعة (بطارية، شاشة...)" 
                                         className="w-full pr-10 pl-4 py-3 text-xs border rounded-xl bg-white dark:bg-slate-700 font-bold text-right outline-none focus:border-indigo-500 shadow-sm transition-all"
                                         value={selectedParts[job.id + '_search'] || ''}
+                                        onFocus={() => setFocusedJobId(job.id)}
+                                        onBlur={() => setTimeout(() => setFocusedJobId(null), 200)}
                                         onChange={(e) => setSelectedParts({...selectedParts, [job.id + '_search']: e.target.value})}
                                       />
                                     </div>
                                     
-                                    {selectedParts[job.id + '_search'] && (
+                                    {(selectedParts[job.id + '_search'] || focusedJobId === job.id) && (
                                       <div className="grid grid-cols-1 gap-1 max-h-[180px] overflow-y-auto no-scrollbar border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-1 bg-slate-50 dark:bg-slate-900 shadow-inner">
                                         {(products || [])
                                           .filter(p => 
                                             p && (isPart(p.category) || p.category === 'accessory') && 
-                                            ((p.name || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase()) || (p.category || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase()))
+                                            ((p.name || '').toLowerCase().includes((selectedParts[job.id + '_search'] || '').toLowerCase()) || (p.category || '').toLowerCase().includes((selectedParts[job.id + '_search'] || '').toLowerCase()))
                                           )
                                           .map(part => (
                                             <button
                                               key={part.id}
                                               type="button"
-                                              onClick={() => {
+                                              onMouseDown={(e) => {
+                                                e.preventDefault(); // Keep focus on input
                                                 handleAddPartToJob(job.id, part);
                                                 setSelectedParts({...selectedParts, [job.id + '_search']: ''});
                                               }}
@@ -622,9 +724,6 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                             </button>
                                           ))
                                         }
-                                        {(products || []).filter(p => p && (isPart(p.category) || p.category === 'accessory') && (p.name || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase())).length === 0 && (
-                                          <div className="p-5 text-center text-[10px] font-bold text-slate-400">مفيش نتائج تطابق بحثك..</div>
-                                        )}
                                       </div>
                                     )}
                                  </div>
@@ -638,7 +737,18 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                   onChange={(e) => updateJobCost(job.id, Number(e.target.value))} 
                                 />
                              </div>
-                             <button onClick={() => setEditingJobId(null)} className="w-full bg-slate-900 text-white py-4 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-2 active:scale-95"><Save size={16}/> حفظ التغييرات والتقرير</button>
+                             <div className="flex gap-2">
+                               <button onClick={() => setEditingJobId(null)} className="flex-1 bg-slate-900 text-white py-4 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-2 active:scale-95"><Save size={16}/> حفظ التغييرات</button>
+                               <button 
+                                 onClick={(e) => {
+                                   e.preventDefault();
+                                   handleCheckout(job, (job.cost - job.paidAmount).toString());
+                                 }} 
+                                 className="flex-1 bg-green-600 text-white py-4 rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-2 active:scale-95 animate-pulse"
+                               >
+                                 <CheckCircle size={16}/> تسليم وكاش فوراً
+                               </button>
+                             </div>
                           </div>
                         ) : (
                           <div className="space-y-3">
@@ -660,6 +770,139 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
              })}
             </div>
           )}
+        </div>
+      )}
+      {activeTab === 'quick' && (
+        <div className="max-w-2xl mx-auto space-y-6 animate-in zoom-in duration-300 pb-20">
+          <div className="bg-white dark:bg-slate-900 p-8 sm:p-10 rounded-[3rem] shadow-2xl border border-amber-100 dark:border-amber-900/20 text-right space-y-8">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600">
+                <Sparkles size={40} />
+              </div>
+              <div className="text-center">
+                <h3 className="text-2xl font-black text-slate-800 dark:text-white">صيانة وتسليم فوري</h3>
+                <p className="text-slate-400 font-bold text-sm">خلصت صيانة وعاوز تسلم وتاخد الكاش بسرعة؟</p>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">موديل الجهاز</label>
+                   <input 
+                     placeholder="مثلاً: سامسونج A24" 
+                     className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-800 text-right font-bold outline-none focus:border-amber-500" 
+                     value={quickJob.phoneModel} 
+                     onChange={e => setQuickJob({...quickJob, phoneModel: e.target.value})} 
+                   />
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">اسم العميل (اختياري)</label>
+                   <input 
+                     placeholder="اكتب الاسم لو حابب..." 
+                     className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-800 text-right font-bold outline-none focus:border-amber-500" 
+                     value={quickJob.customerName} 
+                     onChange={e => setQuickJob({...quickJob, customerName: e.target.value})} 
+                   />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 mr-2 uppercase">إيه اللي اتصلح؟ (العطل)</label>
+                 <input 
+                   placeholder="تغيير شاشة، سوكت، بطارية..." 
+                   className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-800 text-right font-bold outline-none focus:border-amber-500" 
+                   value={quickJob.issue} 
+                   onChange={e => setQuickJob({...quickJob, issue: e.target.value})} 
+                 />
+              </div>
+
+              <div className="space-y-4">
+                 <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 justify-end">قطع غيار من المخزن (لو ركبت حاجة) <Package size={12}/></label>
+                 <div className="relative group">
+                    <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input 
+                      type="text" 
+                      placeholder="ابحث عن قطعة لخصمها من المخزن..." 
+                      className="w-full pr-12 pl-4 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 dark:bg-slate-800 font-bold text-right outline-none focus:border-indigo-500 shadow-sm"
+                      value={workshopPartsSearch}
+                      onFocus={() => setShowQuickPartsList(true)}
+                      onBlur={() => setTimeout(() => setShowQuickPartsList(false), 200)}
+                      onChange={(e) => setWorkshopPartsSearch(e.target.value)}
+                    />
+                 </div>
+                 
+                 {(workshopPartsSearch || showQuickPartsList) && (
+                    <div className="grid grid-cols-1 gap-1 max-h-[150px] overflow-y-auto no-scrollbar border-2 border-slate-50 dark:border-slate-800 rounded-2xl p-2 bg-slate-50/30">
+                      {maintenanceParts
+                        .filter(p => (p.name || '').toLowerCase().includes(workshopPartsSearch.toLowerCase()))
+                        .map(part => (
+                          <button
+                            key={part.id}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // Prevent input blur
+                              if (!quickJob.partsUsed.find(p => p.id === part.id)) {
+                                const additionalLabor = quickJob.partsUsed.length === 0 ? 100 : 0;
+                                setQuickJob({
+                                  ...quickJob, 
+                                  partsUsed: [...quickJob.partsUsed, part],
+                                  cost: quickJob.cost + part.price + additionalLabor
+                                });
+                              }
+                              setWorkshopPartsSearch('');
+                              setShowQuickPartsList(false);
+                            }}
+                            className="flex items-center justify-between p-3 rounded-xl hover:bg-white dark:hover:bg-slate-800 text-right border border-transparent hover:border-slate-200"
+                          >
+                            <span className="font-bold text-xs text-slate-500">{part.price} ج | متاح: {part.stock}</span>
+                            <span className="font-black text-sm">{part.name}</span>
+                          </button>
+                        ))
+                      }
+                    </div>
+                 )}
+
+                 {quickJob.partsUsed.length > 0 && (
+                   <div className="flex flex-wrap gap-2 justify-end">
+                      {quickJob.partsUsed.map(part => (
+                        <span key={part.id} className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1 border border-indigo-100">
+                          <X size={12} className="cursor-pointer" onClick={() => setQuickJob({...quickJob, partsUsed: quickJob.partsUsed.filter(p => p.id !== part.id)})} />
+                          {part.name}
+                        </span>
+                      ))}
+                   </div>
+                 )}
+              </div>
+
+              <div className="space-y-2 pt-4">
+                 <label className="text-[10px] font-black text-amber-600 mr-2 uppercase text-center block">المبلغ اللي استلمته (الكاش)</label>
+                 <div className="relative">
+                    <input 
+                      type="number" 
+                      placeholder="0" 
+                      className="w-full p-6 rounded-[2rem] border-4 border-amber-100 bg-amber-50/30 text-amber-700 font-black text-center text-4xl outline-none focus:border-amber-500 transition-all" 
+                      value={quickJob.cost || ''} 
+                      onChange={e => setQuickJob({...quickJob, cost: Number(e.target.value)})} 
+                    />
+                    <div className="absolute left-8 top-1/2 -translate-y-1/2 text-amber-400 font-black text-xl">جنيـه</div>
+                 </div>
+              </div>
+
+              <button 
+                onClick={handleQuickDeliver}
+                disabled={isSaving}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl shadow-amber-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-3 mt-4"
+              >
+                {isSaving ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : (
+                  <>
+                    <CheckCircle2 size={24} />
+                    تسجيل وتسليم كاش فوراً
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
