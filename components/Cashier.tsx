@@ -266,46 +266,54 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
       {activeTab === 'goods' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Sub-Categories for Goods */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+          {/* Modern Category Filter Bar - Forced Scroll */}
+          <div className="w-full relative px-1 mb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex overflow-x-auto gap-3 py-4 scroll-smooth snap-x snap-mandatory touch-pan-x" style={{ display: 'flex', overflowX: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              <div className="flex gap-3 flex-nowrap pr-1 pl-10" style={{ display: 'flex', flexWrap: 'nowrap', minWidth: 'max-content' }}>
             <button
               onClick={() => setSelectedCategory('all')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all border shrink-0 ${
+              className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-xs font-black transition-all shrink-0 shadow-sm snap-align-start ${
                 selectedCategory === 'all' 
-                  ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 shadow-md' 
-                  : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-blue-500'
+                  ? 'bg-blue-600 text-white shadow-blue-500/30 scale-105' 
+                  : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-700 hover:border-blue-400'
               }`}
             >
-              <Package size={14} />
+              <Package size={16} />
               الكل
             </button>
             {customCategories.map(cat => {
-              const CATEGORY_MAP: Record<string, { label: string, icon: string }> = {
-                phone: { label: 'موبايلات', icon: '📱' },
-                charger: { label: 'شواحن', icon: '🔌' },
-                cable: { label: 'كابلات', icon: '🔌' },
-                wired_earphone: { label: 'سماعات سلك', icon: '🎧' },
-                bluetooth_earphone: { label: 'سماعات بلوتوث', icon: '📶' },
-                headphone: { label: 'هيدفون', icon: '🎚️' },
-                accessory: { label: 'إكسسوارات', icon: '✨' },
-                electronic: { label: 'إلكترونيات', icon: '⚡' }
+              const CATEGORY_MAP: Record<string, { label: string, icon: string, color: string }> = {
+                phone: { label: 'موبايلات', icon: '📱', color: 'blue' },
+                charger: { label: 'شواحن', icon: '🔌', color: 'orange' },
+                cable: { label: 'كابلات', icon: '🔌', color: 'purple' },
+                wired_earphone: { label: 'سماعات سلك', icon: '🎧', color: 'indigo' },
+                bluetooth_earphone: { label: 'سماعات بلوتوث', icon: '📶', color: 'blue' },
+                headphone: { label: 'هيدفون', icon: '🎚️', color: 'pink' },
+                accessory: { label: 'إكسسوارات', icon: '✨', color: 'amber' },
+                electronic: { label: 'إلكترونيات', icon: '⚡', color: 'cyan' }
               };
-              const item = CATEGORY_MAP[cat] || { label: cat, icon: '📦' };
+              const item = CATEGORY_MAP[cat] || { label: cat, icon: '📦', color: 'slate' };
+              const isSelected = selectedCategory === cat;
               
               return (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat as any)}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all border shrink-0 ${
-                    selectedCategory === cat 
-                      ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 shadow-md scale-105' 
-                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-blue-500'
+                  className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black transition-all shrink-0 border-2 snap-align-start ${
+                    isSelected 
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30 scale-105' 
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent hover:border-blue-300'
                   }`}
                 >
-                  <span className="text-sm">{item.icon}</span>
+                  <span className={`text-base transition-transform duration-300 ${isSelected ? 'scale-125 rotate-12' : 'grayscale-[0.5]'}`}>
+                    {item.icon}
+                  </span>
                   {item.label}
                 </button>
               );
             })}
+              </div>
+            </div>
           </div>
 
           <div className="relative group">

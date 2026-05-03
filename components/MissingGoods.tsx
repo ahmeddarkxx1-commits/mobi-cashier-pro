@@ -60,32 +60,32 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
     const syncAutomaticMissing = async () => {
       if (!shopId || loading || products.length === 0) return;
       
-      // نبهني لما يتبقي حتتين أو أقل عشان نلحق نجيب غيرها
       const lowStock = products.filter(p => p.stock <= 2);
+      const pendingNames = new Set<string>();
       
       for (const product of lowStock) {
         if (!isMounted) break;
         
-        // التحقق من الاسم بدقة لمنع التكرار
+        const normalizedName = product.name.trim().toLowerCase();
         const alreadyExists = missingItems.some(item => 
-          item.name.trim().toLowerCase() === product.name.trim().toLowerCase()
-        );
+          item.name.trim().toLowerCase() === normalizedName
+        ) || pendingNames.has(normalizedName);
 
         if (!alreadyExists) {
+          pendingNames.add(normalizedName);
           const newItem = {
             name: product.name,
             status: 'pending',
             is_automatic: true,
             shop_id: shopId,
-            category: product.category // محاولة إضافة التصنيف لو الجدول بيدعمه
+            category: product.category
           };
           
           try {
             const { data, error } = await supabase.from('missing_goods').insert([newItem]).select();
             if (!error && data && isMounted) {
               setMissingItems(prev => {
-                // تأكيد إضافي لمنع التكرار في الـ State
-                if (prev.some(p => p.name === data[0].name)) return prev;
+                if (prev.some(p => p.name.trim().toLowerCase() === normalizedName)) return prev;
                 return [data[0], ...prev];
               });
             }
