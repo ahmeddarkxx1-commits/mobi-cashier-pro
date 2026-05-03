@@ -66,13 +66,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
       {/* Modern Glass Navbar */}
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? 'py-3 bg-slate-950/80 backdrop-blur-2xl border-b border-white/10' : 'py-6 bg-transparent'}`}>
         <div className="container mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-xl shadow-emerald-600/20 rotate-3 hover:rotate-0 transition-transform cursor-pointer">
-              <Smartphone size={24} className="text-white" />
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl md:rounded-2xl shadow-lg shadow-emerald-600/20 rotate-3 hover:rotate-0 transition-transform cursor-pointer">
+              <Smartphone size={20} className="text-white md:w-6 md:h-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black text-white font-sans tracking-tighter leading-none">Mobi Cashier Pro</span>
-              <span className="text-[10px] font-black text-emerald-500 tracking-widest uppercase opacity-80">Smart Shop Manager</span>
+              <span className="text-lg md:text-xl font-black text-white font-sans tracking-tighter leading-none">Mobi Cashier Pro</span>
+              <span className="hidden sm:block text-[8px] md:text-[10px] font-black text-emerald-500 tracking-widest uppercase opacity-80">Smart Shop Manager</span>
             </div>
           </div>
           
@@ -82,13 +82,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
             <a href="#pricing" className="text-sm font-bold text-slate-400 hover:text-emerald-400 transition-colors">الأسعار</a>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button onClick={onLogin} className="text-sm font-black text-slate-200 hover:text-white transition-colors px-5 py-2.5 rounded-xl hover:bg-white/5">
+          <div className="flex items-center gap-2 md:gap-4">
+            <button onClick={onLogin} className="text-xs md:text-sm font-black text-slate-200 hover:text-white transition-colors px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl hover:bg-white/5">
               دخول
             </button>
             <button 
               onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-              className="relative group bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-8 py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-600/30 overflow-hidden active:scale-95"
+              className="relative group bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-black px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-emerald-600/30 overflow-hidden active:scale-95"
             >
               <span className="relative z-10">ابدأ الآن</span>
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
@@ -106,80 +106,80 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
               <span>أقوى نظام إدارة محلات في مصر والوطن العربي</span>
             </div>
             
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-black leading-[1.05] tracking-tighter text-white animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-              سيستم محلك.. <br />
+            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black leading-[1.1] md:leading-[1.05] tracking-tighter text-white animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+              سيستم محلك.. <br className="hidden sm:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-300 to-blue-400">
                 على وضع البرو!
               </span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-slate-400 max-w-2xl font-bold leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+            <p className="text-lg md:text-2xl text-slate-400 max-w-2xl font-bold leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
               موبي كاشير برو مش بس برنامج حسابات، ده "شريك نجاح" بيشيل عنك هم الجرد، لخبطة الصيانة، وتوهان الديون. ركز في البيع وسيب الإدارة علينا.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-5 pt-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
+            <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-5 pt-4 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300">
               <button 
                 onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-                className="w-full sm:w-auto px-12 py-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-[2rem] font-black text-xl transition-all shadow-2xl shadow-emerald-600/40 flex items-center justify-center gap-3 active:scale-95 group"
+                className="w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl md:rounded-[2rem] font-black text-lg md:text-xl transition-all shadow-2xl shadow-emerald-600/40 flex items-center justify-center gap-3 active:scale-95 group"
               >
                 جرب مجاناً لمدة أسبوع
-                <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+                <ChevronLeft size={20} className="md:w-6 md:h-6 group-hover:-translate-x-1 transition-transform" />
               </button>
               <a 
                 href="https://wa.me/201152628515" 
-                className="w-full sm:w-auto px-10 py-6 bg-slate-900/50 hover:bg-slate-800 text-white rounded-[2rem] font-black text-xl transition-all border border-white/10 backdrop-blur-xl flex items-center justify-center gap-3 active:scale-95"
+                className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-6 bg-slate-900/50 hover:bg-slate-800 text-white rounded-2xl md:rounded-[2rem] font-black text-lg md:text-xl transition-all border border-white/10 backdrop-blur-xl flex items-center justify-center gap-3 active:scale-95"
               >
-                <MessageCircle size={24} className="text-[#25D366]" />
+                <MessageCircle size={20} className="md:w-6 md:h-6 text-[#25D366]" />
                 شات واتساب
               </a>
             </div>
 
-            <div className="flex items-center gap-8 pt-8 opacity-60">
-              <div className="text-center">
-                <div className="text-2xl font-black text-white">+1,500</div>
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">محل موبايلات</div>
+            <div className="flex items-center gap-4 md:gap-8 pt-8 opacity-60 overflow-x-auto no-scrollbar">
+              <div className="text-center shrink-0">
+                <div className="text-xl md:text-2xl font-black text-white">+1,500</div>
+                <div className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">محل موبايلات</div>
               </div>
-              <div className="w-px h-10 bg-white/10"></div>
-              <div className="text-center">
-                <div className="text-2xl font-black text-white">+50k</div>
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">عملية يومية</div>
+              <div className="w-px h-8 md:h-10 bg-white/10 shrink-0"></div>
+              <div className="text-center shrink-0">
+                <div className="text-xl md:text-2xl font-black text-white">+50k</div>
+                <div className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">عملية يومية</div>
               </div>
-              <div className="w-px h-10 bg-white/10"></div>
-              <div className="text-center">
-                <div className="text-2xl font-black text-white">24/7</div>
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">دعم فني</div>
+              <div className="w-px h-8 md:h-10 bg-white/10 shrink-0"></div>
+              <div className="text-center shrink-0">
+                <div className="text-xl md:text-2xl font-black text-white">24/7</div>
+                <div className="text-[8px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest">دعم فني</div>
               </div>
             </div>
           </div>
 
-          <div className="flex-1 relative animate-in fade-in zoom-in-95 duration-1000 delay-300">
-            <div className="relative z-10 bg-gradient-to-br from-slate-900 to-slate-950 p-3 rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(16,185,129,0.1)] group transition-all duration-700 hover:rotate-1">
-              <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-[3.5rem] blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
+          <div className="flex-1 relative animate-in fade-in zoom-in-95 duration-1000 delay-300 mt-12 lg:mt-0">
+            <div className="relative z-10 bg-gradient-to-br from-slate-900 to-slate-950 p-2 md:p-3 rounded-[2.5rem] md:rounded-[3.5rem] border border-white/10 shadow-[0_0_100px_rgba(16,185,129,0.1)] group transition-all duration-700 hover:rotate-1 max-w-lg mx-auto lg:max-w-none">
+              <div className="absolute -inset-0.5 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-[2.5rem] md:rounded-[3.5rem] blur opacity-50 group-hover:opacity-100 transition duration-1000"></div>
               <img 
                 src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=1200" 
                 alt="Mobi Cashier Pro Interface" 
-                className="relative rounded-[3rem] w-full h-auto object-cover shadow-2xl"
+                className="relative rounded-[2rem] md:rounded-[3rem] w-full h-auto object-cover shadow-2xl"
               />
-              {/* Floating Elements */}
-              <div className="absolute -top-10 -left-10 p-6 bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl animate-bounce-slow">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
-                    <BarChart3 size={24} />
+              {/* Floating Elements - Hidden on small mobile, visible from sm up */}
+              <div className="hidden sm:block absolute -top-10 -left-6 md:-left-10 p-4 md:p-6 bg-slate-900/90 backdrop-blur-xl rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl animate-bounce-slow">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-500/20 rounded-xl md:rounded-2xl flex items-center justify-center text-emerald-400">
+                    <BarChart3 size={20} className="md:w-6 md:h-6" />
                   </div>
                   <div>
-                    <div className="text-xs font-black text-slate-400">صافي الأرباح</div>
-                    <div className="text-xl font-black text-white">45,280 ج</div>
+                    <div className="text-[10px] md:text-xs font-black text-slate-400">صافي الأرباح</div>
+                    <div className="text-lg md:text-xl font-black text-white">45,280 ج</div>
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-10 -right-10 p-6 bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl animate-bounce-slow" style={{ animationDelay: '1s' }}>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400">
-                    <Wrench size={24} />
+              <div className="hidden sm:block absolute -bottom-10 -right-6 md:-right-10 p-4 md:p-6 bg-slate-900/90 backdrop-blur-xl rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl animate-bounce-slow" style={{ animationDelay: '1s' }}>
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-500/20 rounded-xl md:rounded-2xl flex items-center justify-center text-blue-400">
+                    <Wrench size={20} className="md:w-6 md:h-6" />
                   </div>
                   <div>
-                    <div className="text-xs font-black text-slate-400">أجهزة الصيانة</div>
-                    <div className="text-xl font-black text-white">12 جهاز جاهز</div>
+                    <div className="text-[10px] md:text-xs font-black text-slate-400">أجهزة الصيانة</div>
+                    <div className="text-lg md:text-xl font-black text-white">12 جهاز جاهز</div>
                   </div>
                 </div>
               </div>
@@ -489,11 +489,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
           href="https://wa.me/201152628515" 
           target="_blank" 
           rel="noreferrer"
-          className="group relative flex items-center gap-4 bg-[#25D366] text-white p-2 pr-8 rounded-full shadow-2xl shadow-[#25D366]/40 transition-all hover:pr-10 active:scale-95"
+          className="group relative flex items-center gap-4 bg-[#25D366] text-white p-2 md:p-2 pr-8 md:pr-8 rounded-full shadow-2xl shadow-[#25D366]/40 transition-all hover:pr-10 active:scale-95"
         >
-          <span className="font-black text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">اسألنا أي حاجة!</span>
-          <div className="bg-white p-3 rounded-full text-[#25D366] shadow-inner">
-            <MessageCircle size={28} />
+          <span className="hidden md:block font-black text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">اسألنا أي حاجة!</span>
+          <div className="bg-white p-2.5 md:p-3 rounded-full text-[#25D366] shadow-inner">
+            <MessageCircle size={24} className="md:w-7 md:h-7" />
           </div>
         </a>
       </div>

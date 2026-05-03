@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Package, Plus, Trash2, Search, ClipboardList, Loader2 } from 'lucide-react';
+import { AlertCircle, Package, Plus, Trash2, Search, ClipboardList, Loader2, Smartphone } from 'lucide-react';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -16,12 +16,15 @@ interface MissingItem {
   status: 'pending' | 'ordered' | 'received';
   created_at: string;
   is_automatic: boolean;
+  category?: string; // Adding category support
 }
 
 const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
   const [missingItems, setMissingItems] = useState<MissingItem[]>([]);
   const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('إكسسوارات');
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -53,32 +56,49 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
 
   // المزامنة التلقائية: التأكد من أن كل منتج كميته صفر موجود في الجدول
   useEffect(() => {
+    let isMounted = true;
     const syncAutomaticMissing = async () => {
-      if (!shopId || loading) return;
+      if (!shopId || loading || products.length === 0) return;
       
       // نبهني لما يتبقي حتتين أو أقل عشان نلحق نجيب غيرها
       const lowStock = products.filter(p => p.stock <= 2);
       
       for (const product of lowStock) {
-        const alreadyExists = missingItems.some(item => item.name === product.name);
+        if (!isMounted) break;
+        
+        // التحقق من الاسم بدقة لمنع التكرار
+        const alreadyExists = missingItems.some(item => 
+          item.name.trim().toLowerCase() === product.name.trim().toLowerCase()
+        );
+
         if (!alreadyExists) {
           const newItem = {
             name: product.name,
             status: 'pending',
             is_automatic: true,
-            shop_id: shopId
+            shop_id: shopId,
+            category: product.category // محاولة إضافة التصنيف لو الجدول بيدعمه
           };
           
-          const { data, error } = await supabase.from('missing_goods').insert([newItem]).select();
-          if (!error && data) {
-            setMissingItems(prev => [data[0], ...prev]);
+          try {
+            const { data, error } = await supabase.from('missing_goods').insert([newItem]).select();
+            if (!error && data && isMounted) {
+              setMissingItems(prev => {
+                // تأكيد إضافي لمنع التكرار في الـ State
+                if (prev.some(p => p.name === data[0].name)) return prev;
+                return [data[0], ...prev];
+              });
+            }
+          } catch (e) {
+            console.error("Sync insert failed", e);
           }
         }
       }
     };
 
     syncAutomaticMissing();
-  }, [products, shopId, loading]);
+    return () => { isMounted = false; };
+  }, [products.length, shopId, loading]); // تقليل مسببات التكرار
 
   const handleAddManualItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +110,8 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
         name: newItemName.trim(),
         status: 'pending',
         is_automatic: false,
-        shop_id: shopId
+        shop_id: shopId,
+        category: newItemCategory // حفظ التصنيف المختار يدوياً
       };
 
       const { data, error } = await supabase.from('missing_goods').insert([newItem]).select();
@@ -136,10 +157,51 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
   };
 
   const filteredItems = useMemo(() => {
-    return missingItems.filter(item => 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [missingItems, searchTerm]);
+    // 1. إزالة التكرار من القائمة بناءً على الاسم (safety net)
+    const uniqueItems: MissingItem[] = [];
+    const seenNames = new Set<string>();
+
+    [...missingItems]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .forEach(item => {
+        const normalizedName = item.name.trim().toLowerCase();
+        if (!seenNames.has(normalizedName)) {
+          seenNames.add(normalizedName);
+          uniqueItems.push(item);
+        }
+      });
+
+    // 2. الفلترة بناءً على البحث والتصنيف
+    return uniqueItems.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const itemCat = getItemCategory(item);
+      const matchesCategory = categoryFilter === 'all' || itemCat === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [missingItems, searchTerm, categoryFilter]);
+
+  // دالة لجلب تصنيف المنتج من قائمة المنتجات الحالية
+  const getItemCategory = (item: MissingItem) => {
+    // لو الصنف متسجل فيه تصنيف أصلاً (من الإضافة اليدوية أو المزامنة)
+    if (item.category) return item.category;
+
+    // محاولة البحث في المنتجات
+    const product = products.find(p => p.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+    if (product) return product.category;
+    
+    // محاولة استنتاج التصنيف من الاسم كملجأ أخير
+    const n = item.name.toLowerCase();
+    if (n.includes('شاشه') || n.includes('شاشة') || n.includes('screen')) return 'شاشات';
+    if (n.includes('بطاريه') || n.includes('بطارية') || n.includes('battery')) return 'بطاريات';
+    if (n.includes('شاحن') || n.includes('charger') || n.includes('كابل') || n.includes('cable')) return 'إكسسوارات';
+    return 'صنف يدوي';
+  };
+
+  // دالة لجلب الكمية المتبقية في المخزن
+  const getStockQuantity = (name: string) => {
+    const product = products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+    return product ? product.stock : null;
+  };
 
   return (
     <div className="space-y-6 font-['Cairo'] animate-in fade-in duration-500">
@@ -170,6 +232,23 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
                 disabled={isAdding}
               />
             </div>
+
+            <div className="space-y-2 text-right">
+              <label className="text-[10px] font-black text-slate-400 uppercase pr-1">تصنيف الصنف</label>
+              <select 
+                className="w-full p-4 rounded-2xl border-2 border-slate-50 bg-slate-50 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
+                value={newItemCategory}
+                onChange={e => setNewItemCategory(e.target.value)}
+                disabled={isAdding}
+              >
+                <option value="شاشات">شاشات</option>
+                <option value="بطاريات">بطاريات</option>
+                <option value="إكسسوارات">إكسسوارات</option>
+                <option value="قطع غيار">قطع غيار</option>
+                <option value="أدوات صيانة">أدوات صيانة</option>
+                <option value="أخرى">أخرى</option>
+              </select>
+            </div>
             <button 
                 type="submit" 
                 disabled={isAdding || !newItemName.trim()}
@@ -192,7 +271,7 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
 
         <div className="lg:col-span-2 space-y-6">
            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[500px]">
-              <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+              <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex flex-col gap-4">
                  <div className="relative flex-1 w-full">
                     <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
@@ -202,6 +281,23 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
+                 </div>
+                 
+                 {/* فلتر التصنيفات السريع */}
+                 <div className="flex flex-wrap gap-2 justify-end">
+                    {['all', 'شاشات', 'بطاريات', 'إكسسوارات', 'قطع غيار'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setCategoryFilter(cat)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${
+                          categoryFilter === cat 
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {cat === 'all' ? 'الكل' : cat}
+                      </button>
+                    ))}
                  </div>
               </div>
 
@@ -241,17 +337,28 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products, shopId }) => {
 
                            <div className="flex items-center gap-4 text-right">
                               <div>
-                                 <div className="font-black text-slate-800 dark:text-white text-sm flex items-center gap-2 justify-end">
+                                  <div className="font-black text-slate-800 dark:text-white text-sm flex items-center gap-2 justify-end">
                                     {item.name}
-                                    {item.is_automatic && <span className="bg-orange-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse">نقص حاد</span>}
+                                    {item.is_automatic && <span className="bg-orange-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black animate-pulse whitespace-nowrap">نقص حاد</span>}
                                  </div>
-                                 <div className="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-1 justify-end">
-                                    {item.is_automatic ? 'كمية منخفضة جداً في المخزن' : 'مضافة يدوياً'}
-                                    <AlertCircle size={10} />
+                                 <div className="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-2 justify-end">
+                                    <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md text-blue-600 dark:text-blue-400">
+                                      {getItemCategory(item)}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      {item.is_automatic ? (
+                                        <span className="text-red-500">
+                                          متبقي {getStockQuantity(item.name)} قطع فقط
+                                        </span>
+                                      ) : 'مضافة يدوياً'}
+                                      <AlertCircle size={10} />
+                                    </div>
                                  </div>
                               </div>
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.is_automatic ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                                 {item.is_automatic ? <AlertCircle size={20} /> : <Package size={20} />}
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${item.is_automatic ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                                 {getItemCategory(item).includes('شاش') ? <Smartphone size={24} /> : 
+                                  getItemCategory(item).includes('بطار') ? <Package size={24} /> : 
+                                  <AlertCircle size={24} />}
                               </div>
                            </div>
                         </div>

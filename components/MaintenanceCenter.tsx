@@ -60,6 +60,9 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSellingPart, setIsSellingPart] = useState(false);
+  const [isDeferred, setIsDeferred] = useState(false);
+  const [debtorName, setDebtorName] = useState('');
+  const [recentDirectSales, setRecentDirectSales] = useState<any[]>([]);
   const [selectedPartId, setSelectedPartId] = useState<string>('');
   const [partsSalePrice, setPartsSalePrice] = useState<number>(0);
   const [checkoutPayments, setCheckoutPayments] = useState<Record<string, string>>({});
@@ -131,6 +134,40 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     );
   }, [products, partsSearchTerm, partCategories]);
 
+  const fetchRecentSales = async () => {
+    if (!shopId) return;
+    
+    // 1. Fetch recent transactions
+    const { data: transData } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('shop_id', shopId)
+      .ilike('description', '%بيع قطعة غيار%')
+      .order('date', { ascending: false })
+      .limit(5);
+
+    // 2. Fetch recent debts (Deferred sales)
+    const { data: debtData } = await supabase
+      .from('debts')
+      .select('*')
+      .eq('shop_id', shopId)
+      .ilike('description', '%بيع قطعة غيار%')
+      .order('date', { ascending: false })
+      .limit(5);
+
+    // 3. Merge and map them to a uniform format
+    const merged = [
+      ...(transData || []).map(t => ({ ...t, isDebt: false })),
+      ...(debtData || []).map(d => ({ ...d, isDebt: true, medium: 'deferred' }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+     .slice(0, 8);
+
+    setRecentDirectSales(merged);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'parts_sale') fetchRecentSales();
+  }, [activeTab, shopId]);
   const addNotification = (message: string, type: Notification['type'] = 'info') => {
     if (type === 'success') toast.success(message);
     else if (type === 'warning') toast.error(message);
@@ -199,25 +236,55 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     try {
       if (!shopId) throw new Error('Shop ID is missing');
 
-      // 1. Update Stock
       await updateProductStock(part.id, part.stock - 1);
       
-      // 2. Record Transaction using prop
-      addTransaction({
-        type: 'maintenance',
-        medium: 'cash',
-        amount: partsSalePrice,
-        cost: part.cost,
-        profit: partsSalePrice - part.cost,
-        description: `بيع قطعة غيار مباشر: ${part.name}`,
-        category: 'maintenance'
-      });
+      if (isDeferred) {
+        if (!debtorName.trim()) {
+           toast.error('اكتب اسم المحل أو صاحب النصيب!');
+           return;
+        }
+        await createDebt({
+          customerName: debtorName,
+          amount: partsSalePrice,
+          remainingAmount: partsSalePrice,
+          description: `بيع قطعة غيار (آجل): ${part.name}`,
+          date: new Date().toISOString(),
+          status: 'pending',
+          type: 'sale',
+          shop_id: shopId
+        }, shopId);
+        
+        // Record as transaction too so it shows in history
+        addTransaction({
+          type: 'maintenance',
+          medium: 'cash',
+          amount: 0, // 0 because no cash received yet
+          cost: part.cost,
+          profit: 0,
+          description: `بيع قطعة غيار (آجل): ${part.name} للمحل: ${debtorName}`,
+          category: 'maintenance'
+        });
+        
+        addNotification(`تم تسجيل دين بمبلغ ${partsSalePrice} ج على ${debtorName}`, 'warning');
+      } else {
+        addTransaction({
+          type: 'maintenance',
+          medium: 'cash',
+          amount: partsSalePrice,
+          cost: part.cost,
+          profit: partsSalePrice - part.cost,
+          description: `بيع قطعة غيار مباشر: ${part.name}`,
+          category: 'maintenance'
+        });
+      }
 
-      // 3. Update UI
       setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock - 1 } : p));
       setSelectedPartId('');
       setPartsSalePrice(0);
-      toast.success(`تم بيع ${part.name} بنجاح!`);
+      setIsDeferred(false);
+      setDebtorName('');
+      fetchRecentSales();
+      toast.success(`تم ${isDeferred ? 'حجز' : 'بيع'} ${part.name} بنجاح!`);
     } catch (err) {
       console.error(err);
       toast.error('فشل تسجيل عملية البيع.');
@@ -309,6 +376,63 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     }
   };
 
+  const handleReturnPart = async (sale: any) => {
+    try {
+      // 1. Find the product name from description
+      let partName = sale.description.replace('بيع قطعة غيار مباشر: ', '').replace('بيع قطعة غيار (آجل): ', '');
+      // Clean up debtor name if present in description
+      if (partName.includes(' للمحل: ')) {
+        partName = partName.split(' للمحل: ')[0];
+      }
+      
+      const part = products.find(p => p.name === partName);
+      
+      if (!part) {
+        toast.error('لم نتمكن من العثور على القطعة في المخزن حالياً!');
+        return;
+      }
+
+      // 2. Restore Stock
+      await updateProductStock(part.id, part.stock + 1);
+      setProducts(prev => prev.map(p => p.id === part.id ? { ...p, stock: p.stock + 1 } : p));
+
+      // 3. Delete from DB
+      if (sale.isDebt) {
+        await supabase.from('debts').delete().eq('id', sale.id);
+      } else {
+        await supabase.from('transactions').delete().eq('id', sale.id);
+        
+        // Also try to delete associated debt if description matches
+        const { data: relatedDebts } = await supabase
+          .from('debts')
+          .select('id')
+          .eq('shop_id', shopId)
+          .ilike('description', `%${partName}%`)
+          .limit(1);
+        
+        if (relatedDebts && relatedDebts.length > 0) {
+          await supabase.from('debts').delete().eq('id', relatedDebts[0].id);
+        }
+      }
+
+      // 4. Handle refund if it was cash
+      if (!sale.isDebt && sale.medium === 'cash' && sale.amount > 0) {
+        addTransaction({
+          type: 'expense',
+          medium: 'cash',
+          amount: sale.amount,
+          description: `مرتجع قطعة غيار: ${partName}`,
+          category: 'maintenance'
+        });
+      }
+
+      toast.success(`تم إرجاع ${partName} للمخزن بنجاح!`);
+      fetchRecentSales();
+    } catch (err) {
+      console.error(err);
+      toast.error('فشل إتمام المرتجع.');
+    }
+  };
   const updateJobCost = async (id: string, newCost: number) => {
     try {
       await updateMaintenanceJob(id, { cost: newCost });
@@ -321,7 +445,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   return (
     <div className="space-y-6 font-['Cairo'] relative">
-      <div className="flex bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full sm:w-fit overflow-x-auto no-scrollbar gap-2">
+      <div className="flex flex-wrap bg-white dark:bg-slate-900 p-2 rounded-[2rem] shadow-sm border border-slate-100 dark:border-slate-800 w-full gap-2">
         <button onClick={() => setActiveTab('workshop')} className={`relative flex items-center gap-2 px-8 py-3.5 rounded-2xl text-xs font-black transition-all whitespace-nowrap ${activeTab === 'workshop' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
           <Wrench size={16} /> استلام جهاز (ورشة)
           {userRole !== 'CASHIER' && pendingCount > 0 && <span className="absolute -top-1 -left-1 w-6 h-6 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white animate-bounce">{pendingCount}</span>}
@@ -629,14 +753,14 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                   </div>
                 )}
 
-               <div className="flex gap-2">
+               <div className="flex gap-3">
                    <button 
                       type="button"
                       onClick={() => {
                          const p = products.find(x => x.id === selectedPartId);
                          if (p) setPartsSalePrice(p.wholesale_price || p.price);
                       }}
-                      className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200 active:scale-95 transition-all"
+                      className="flex-1 py-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-2xl text-xs font-black border border-blue-200 active:scale-90 transition-all duration-200 shadow-sm"
                     >سعر المحلات</button>
                     <button 
                       type="button"
@@ -644,7 +768,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                          const p = products.find(x => x.id === selectedPartId);
                          if (p) setPartsSalePrice(p.price);
                       }}
-                      className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200 active:scale-95 transition-all"
+                      className="flex-1 py-4 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl text-xs font-black border border-slate-200 active:scale-90 transition-all duration-200 shadow-sm"
                     >سعر الزبون</button>
                 </div>
 
@@ -662,6 +786,32 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                    </div>
                    <p className="text-[10px] text-gray-400 mt-1 font-bold text-center">تقدر تمسح السعر وتكتب السعر اللي اتفقت عليه يدوي</p>
                 </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4 transition-all">
+                    <div className="flex items-center justify-between">
+                       <label className="flex items-center gap-3 cursor-pointer group">
+                          <div className={`w-12 h-6 rounded-full transition-all relative ${isDeferred ? 'bg-amber-500' : 'bg-slate-300'}`}>
+                             <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isDeferred ? 'left-1' : 'left-7'}`} />
+                          </div>
+                          <input type="checkbox" className="hidden" checked={isDeferred} onChange={e => setIsDeferred(e.target.checked)} />
+                          <span className={`text-sm font-black transition-colors ${isDeferred ? 'text-amber-600' : 'text-slate-400'}`}>بيع آجل (شكك)</span>
+                       </label>
+                       <AlertCircle size={18} className={isDeferred ? 'text-amber-500' : 'text-slate-300'} />
+                    </div>
+ 
+                    {isDeferred && (
+                       <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[10px] font-black text-amber-600 px-1 uppercase">اسم المحل أو العميل</label>
+                          <input 
+                            type="text"
+                            placeholder="اكتب اسم المحل اللي خد القطعة..."
+                            className="w-full p-4 rounded-xl border-2 border-amber-100 bg-white text-right font-bold text-xs outline-none focus:border-amber-500 transition-all shadow-inner"
+                            value={debtorName}
+                            onChange={(e) => setDebtorName(e.target.value)}
+                          />
+                       </div>
+                    )}
+                 </div>
 
                 <button 
                   onClick={handleDirectPartSale}
@@ -683,6 +833,37 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                 </button>
              </div>
           </div>
+
+           {/* Recent Sales History */}
+           <div className="bg-white dark:bg-slate-900 p-8 rounded-[3rem] shadow-xl border border-slate-100 dark:border-slate-800 text-right space-y-6 animate-in fade-in duration-700">
+              <div className="flex items-center justify-between px-2">
+                 <h4 className="text-lg font-black text-slate-800 dark:text-white">سجل مبيعات قطع الغيار</h4>
+                 <History size={20} className="text-slate-400" />
+              </div>
+              <div className="space-y-3">
+                 {recentDirectSales.length === 0 ? (
+                    <div className="py-10 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                       <p className="text-xs font-bold text-slate-400">لسه مفيش عمليات بيع ظهرت هنا..</p>
+                    </div>
+                 ) : (
+                    recentDirectSales.map(sale => (
+                       <div key={sale.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-blue-300 transition-all group">
+                          <button 
+                            onClick={() => handleReturnPart(sale)}
+                            className="text-[10px] font-black text-red-600 bg-red-50 hover:bg-red-600 hover:text-white px-4 py-2 rounded-xl border border-red-100 transition-all active:scale-95 flex items-center gap-1"
+                          >
+                            <History size={12} /> مرتجع
+                          </button>
+                          <div className="text-right">
+                             <div className="text-xs font-black text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{sale.description}</div>
+                             <div className="text-[10px] font-bold text-slate-400">{new Date(sale.date).toLocaleString('ar-EG')} | <span className="text-blue-600 font-black">{sale.amount} ج</span></div>
+                          </div>
+                       </div>
+                    ))
+                 )}
+              </div>
+              <p className="text-[9px] text-center text-slate-400 font-bold">ملحوظة: المرتجع يرجع القطعة للمخزن ويلغي الدين أو العملية</p>
+           </div>
         </div>
       )}
 

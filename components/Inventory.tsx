@@ -679,47 +679,61 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
           </div>
         </div>
 
-        <div className="overflow-x-auto w-full pb-4">
-          <table className="w-full text-right min-w-[750px]">
-            <thead className="bg-gray-50 dark:bg-slate-800/50 text-xs font-black text-gray-500 dark:text-gray-400 transition-colors duration-300">
-              <tr>
-                <th className="p-5">الصنف</th>
-                <th className="p-5 text-center">النوع</th>
-                <th className="p-5 text-center">واقف عليا بكام</th>
-                <th className="p-5 text-center">سعر البيع</th>
-                <th className="p-5 text-center">باقي كام</th>
-                <th className="p-5 text-center">تحكم</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+        <div className="p-4 sm:p-6">
+          {filteredProducts.length === 0 ? (
+            <div className="py-20 text-center">
+              <div className="bg-slate-50 dark:bg-slate-800 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                <Package size={40} />
+              </div>
+              <p className="font-black text-slate-400">مفيش نتائج للبحث ده..</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredProducts.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50/50 transition-colors text-sm font-bold">
-                  <td className="p-5 text-gray-800 dark:text-white">{product.name}</td>
-                  <td className="p-5 text-center">
-                    <span className="px-3 py-1.5 rounded-full text-[10px] bg-blue-50 text-blue-700">
+                <div 
+                  key={product.id} 
+                  className="bg-white dark:bg-slate-800/50 rounded-[2rem] border border-gray-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex gap-2">
+                       <button onClick={() => deleteProduct(product.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                        <Trash2 size={16} />
+                      </button>
+                      <button onClick={() => startEdit(product)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                        <Edit size={16} />
+                      </button>
+                    </div>
+                    <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] px-3 py-1 rounded-full font-black">
                       {getCategoryLabel(product.category)}
                     </span>
-                  </td>
-                  <td className="p-5 text-center text-gray-400">{product.cost} ج</td>
-                  <td className="p-5 text-center">
-                    <div className="text-indigo-600">{product.price} ج</div>
-                    <div className="text-[10px] text-blue-500 font-black">جملة: {product.wholesale_price || 0} ج</div>
-                  </td>
-                  <td className="p-5 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[11px] ${product.stock < 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                      {product.stock} حتة
-                    </span>
-                  </td>
-                  <td className="p-5 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button onClick={() => startEdit(product)} className="p-2.5 text-blue-600 bg-blue-50 rounded-xl"><Edit size={16} /></button>
-                      <button onClick={() => deleteProduct(product.id)} className="p-2.5 text-red-600 bg-red-50 rounded-xl"><Trash2 size={16} /></button>
+                  </div>
+
+                  <div className="text-right space-y-1 mb-4">
+                    <div className="font-black text-slate-800 dark:text-white text-base truncate" title={product.name}>
+                      {product.name}
                     </div>
-                  </td>
-                </tr>
+                    <div className="flex items-center justify-end gap-2">
+                       <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${product.stock <= 2 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-green-100 text-green-700'}`}>
+                        متبقي: {product.stock} حتة
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl">
+                    <div className="text-right border-l border-slate-200 dark:border-slate-700 pr-2">
+                      <div className="text-[9px] font-black text-slate-400 uppercase mb-1">واقف عليك بـ</div>
+                      <div className="text-sm font-black text-slate-600 dark:text-slate-300">{product.cost} <span className="text-[10px]">ج</span></div>
+                    </div>
+                    <div className="text-right pr-2">
+                      <div className="text-[9px] font-black text-indigo-500 uppercase mb-1">سعر البيع</div>
+                      <div className="text-sm font-black text-indigo-600">{product.price} <span className="text-[10px]">ج</span></div>
+                      <div className="text-[9px] font-black text-blue-500 mt-1">جملة: {product.wholesale_price || 0} ج</div>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
