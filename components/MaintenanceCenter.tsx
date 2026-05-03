@@ -75,8 +75,13 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   const isPart = (cat: string) => {
     const categoryName = (cat || '').toLowerCase();
-    const partKeywords = ['part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة'];
-    return partCategories.includes(cat) || partKeywords.some(k => categoryName.includes(k));
+    const partKeywords = [
+      'part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة',
+      'battery', 'screen', 'display', 'lcd', 'cable', 'charging', 'flex', 'camera', 'spare', 'repair'
+    ];
+    // Check if category name matches any keyword or is in the custom partCategories list
+    return partCategories.some((c: string) => c.toLowerCase() === categoryName) || 
+           partKeywords.some(k => categoryName.includes(k));
   };
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
@@ -448,32 +453,65 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                                 <textarea placeholder="لقيت إيه في الجهاز؟..." className="w-full p-4 text-xs border rounded-xl bg-white dark:bg-slate-700 font-bold text-right outline-none focus:border-blue-500" rows={2} value={job.notes || ''} onChange={(e) => updateReportField(job.id, 'notes', e.target.value)} />
                              </div>
                              <div className="space-y-2">
-                                <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 justify-end">قطع ركبتها <Layers size={12}/></label>
+                                <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 justify-end">قطع ركبتها (اكتب هنا للتقرير المطبوع) <Layers size={12}/></label>
                                 <input placeholder="شاشة، بطارية، سماعة..." className="w-full p-4 text-xs border rounded-xl bg-white dark:bg-slate-700 font-bold text-right outline-none focus:border-blue-500" value={job.partsUsed || ''} onChange={(e) => updateReportField(job.id, 'partsUsed', e.target.value)} />
-                                <div className="mt-3 flex items-center gap-2 p-2 bg-blue-50 rounded-xl w-fit cursor-pointer" onClick={() => setIsWholesale(!isWholesale)}>
-                                  <input type="checkbox" checked={isWholesale} onChange={() => {}} className="w-4 h-4" />
-                                  <span className="text-xs font-black text-blue-700">حساب بسعر "المحلات / جملة"</span>
-                                </div>
-                                {maintenanceParts.length > 0 && (
-                                  <div className="flex gap-2 mt-2">
-                                    <button type="button" onClick={() => {
-                                      const pId = selectedParts[job.id];
-                                      if (!pId) return;
-                                      const p = maintenanceParts.find(x => x.id === pId);
-                                      if (p) handleAddPartToJob(job.id, p);
-                                    }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-sm shrink-0 transition-colors">ضيفها للتقرير</button>
-                                    <select 
-                                      className="w-full p-2 text-xs border rounded-xl bg-slate-50 dark:bg-slate-800 font-bold text-right outline-none cursor-pointer focus:border-indigo-500"
-                                      value={selectedParts[job.id] || ''}
-                                      onChange={(e) => setSelectedParts({...selectedParts, [job.id]: e.target.value})}
-                                    >
-                                      <option value="">-- اختار واخصم من المخزن --</option>
-                                      {maintenanceParts.map(part => (
-                                        <option key={part.id} value={part.id}>{part.name} (باقي {part.stock}) - جملة: {part.wholesale_price || 0} ج</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
+                                
+                                <div className="mt-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                       <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl w-fit cursor-pointer" onClick={() => setIsWholesale(!isWholesale)}>
+                                          <input type="checkbox" checked={isWholesale} onChange={() => {}} className="w-4 h-4" />
+                                          <span className="text-[10px] font-black text-blue-700 dark:text-blue-300">حساب بسعر "الجملة"</span>
+                                       </div>
+                                       <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1">خصم من المخزن <Package size={12}/></label>
+                                    </div>
+
+                                    <div className="relative group">
+                                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500" size={14} />
+                                      <input 
+                                        type="text" 
+                                        placeholder="ابحث عن قطعة (بطارية، شاشة...)" 
+                                        className="w-full pr-10 pl-4 py-3 text-xs border rounded-xl bg-white dark:bg-slate-700 font-bold text-right outline-none focus:border-indigo-500 shadow-sm transition-all"
+                                        value={selectedParts[job.id + '_search'] || ''}
+                                        onChange={(e) => setSelectedParts({...selectedParts, [job.id + '_search']: e.target.value})}
+                                      />
+                                    </div>
+                                    
+                                    {selectedParts[job.id + '_search'] && (
+                                      <div className="grid grid-cols-1 gap-1 max-h-[180px] overflow-y-auto no-scrollbar border border-indigo-100 dark:border-indigo-900/30 rounded-xl p-1 bg-slate-50 dark:bg-slate-900 shadow-inner">
+                                        {(products || [])
+                                          .filter(p => 
+                                            p && (isPart(p.category) || p.category === 'accessory') && 
+                                            ((p.name || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase()) || (p.category || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase()))
+                                          )
+                                          .map(part => (
+                                            <button
+                                              key={part.id}
+                                              type="button"
+                                              onClick={() => {
+                                                handleAddPartToJob(job.id, part);
+                                                setSelectedParts({...selectedParts, [job.id + '_search']: ''});
+                                              }}
+                                              className="flex items-center justify-between p-3 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-right border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/30 transition-all group/item"
+                                            >
+                                              <div className="flex flex-col items-end">
+                                                <span className="font-black text-[11px] text-slate-800 dark:text-white group-hover/item:text-indigo-600 transition-colors">{part.name}</span>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                  <span className="text-[8px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded-md text-slate-500 font-black">{part.category}</span>
+                                                  <span className="text-[9px] font-bold text-slate-400">متاح: {part.stock} | {isWholesale ? (part.wholesale_price || part.price) : part.price} ج</span>
+                                                </div>
+                                              </div>
+                                              <div className="w-8 h-8 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center group-hover/item:bg-indigo-600 group-hover/item:text-white transition-all">
+                                                 <Plus size={14} />
+                                              </div>
+                                            </button>
+                                          ))
+                                        }
+                                        {(products || []).filter(p => p && (isPart(p.category) || p.category === 'accessory') && (p.name || '').toLowerCase().includes(selectedParts[job.id + '_search'].toLowerCase())).length === 0 && (
+                                          <div className="p-5 text-center text-[10px] font-bold text-slate-400">مفيش نتائج تطابق بحثك..</div>
+                                        )}
+                                      </div>
+                                    )}
+                                 </div>
                              </div>
                              <div className="space-y-2">
                                 <label className="text-[10px] font-black text-green-600 uppercase flex items-center gap-1 justify-end">التكلفة النهائية (قابلة للتعديل) <CreditCard size={12}/></label>
@@ -593,57 +631,57 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
                <div className="flex gap-2">
                    <button 
-                     type="button"
-                     onClick={() => {
-                        const p = products.find(x => x.id === selectedPartId);
-                        if (p) setPartsSalePrice(p.wholesale_price || 0);
-                     }}
-                     className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200 active:scale-95 transition-all"
-                   >سعر المحلات</button>
-                   <button 
-                     type="button"
-                     onClick={() => {
-                        const p = products.find(x => x.id === selectedPartId);
-                        if (p) setPartsSalePrice(p.price);
-                     }}
-                     className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200 active:scale-95 transition-all"
-                   >سعر الزبون</button>
-               </div>
+                      type="button"
+                      onClick={() => {
+                         const p = products.find(x => x.id === selectedPartId);
+                         if (p) setPartsSalePrice(p.wholesale_price || p.price);
+                      }}
+                      className="flex-1 p-3 bg-blue-50 text-blue-700 rounded-xl text-[10px] font-black border border-blue-200 active:scale-95 transition-all"
+                    >سعر المحلات</button>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                         const p = products.find(x => x.id === selectedPartId);
+                         if (p) setPartsSalePrice(p.price);
+                      }}
+                      className="flex-1 p-3 bg-slate-50 text-slate-700 rounded-xl text-[10px] font-black border border-slate-200 active:scale-95 transition-all"
+                    >سعر الزبون</button>
+                </div>
 
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 px-1 uppercase">سعر البيع المطلوب</label>
-                  <div className="relative">
-                     <input 
-                       type="number"
-                       placeholder="0"
-                       className="w-full p-5 rounded-2xl border-2 border-blue-100 bg-blue-50/30 text-blue-700 font-black text-center text-3xl outline-none focus:border-blue-500 transition-all"
-                       value={partsSalePrice || ''}
-                       onChange={(e) => setPartsSalePrice(Number(e.target.value))}
-                     />
-                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-400 font-black">جنيـه</div>
-                  </div>
-                  <p className="text-[10px] text-gray-400 mt-1 font-bold text-center">تقدر تمسح السعر وتكتب السعر اللي اتفقت عليه يدوي</p>
-               </div>
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-slate-400 px-1 uppercase">سعر البيع المطلوب</label>
+                   <div className="relative">
+                      <input 
+                        type="number"
+                        placeholder="0"
+                        className="w-full p-5 rounded-2xl border-2 border-blue-100 bg-blue-50/30 text-blue-700 font-black text-center text-3xl outline-none focus:border-blue-500 transition-all"
+                        value={partsSalePrice || ''}
+                        onChange={(e) => setPartsSalePrice(Number(e.target.value))}
+                      />
+                      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-blue-400 font-black">جنيـه</div>
+                   </div>
+                   <p className="text-[10px] text-gray-400 mt-1 font-bold text-center">تقدر تمسح السعر وتكتب السعر اللي اتفقت عليه يدوي</p>
+                </div>
 
-               <button 
-                 onClick={handleDirectPartSale}
-                 disabled={isSellingPart || !selectedPartId}
-                 className="group relative w-full bg-blue-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl hover:bg-blue-700 transition-all active:scale-90 disabled:opacity-50 flex items-center justify-center gap-3 text-lg overflow-hidden"
-               >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform duration-200"></div>
-                  {isSellingPart ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>جاري إتمام البيعة...</span>
-                    </div>
-                  ) : (
-                    <>
-                       <CheckCircle2 size={24} className="group-active:scale-125 transition-transform" /> 
-                       إتمام البيع والخصم من المخزن
-                    </>
-                  )}
-               </button>
-            </div>
+                <button 
+                  onClick={handleDirectPartSale}
+                  disabled={isSellingPart || !selectedPartId}
+                  className="group relative w-full bg-blue-600 text-white font-black py-6 rounded-[2.5rem] shadow-2xl hover:bg-blue-700 transition-all active:scale-90 disabled:opacity-50 flex items-center justify-center gap-3 text-lg overflow-hidden"
+                >
+                   <div className="absolute inset-0 bg-white/20 translate-y-full group-active:translate-y-0 transition-transform duration-200"></div>
+                   {isSellingPart ? (
+                     <div className="flex items-center gap-2">
+                       <div className="w-5 h-5 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                       <span>جاري إتمام البيعة...</span>
+                     </div>
+                   ) : (
+                     <>
+                        <CheckCircle2 size={24} className="group-active:scale-125 transition-transform" /> 
+                        إتمام البيع والخصم من المخزن
+                     </>
+                   )}
+                </button>
+             </div>
           </div>
         </div>
       )}
@@ -656,45 +694,45 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
              </div>
            ) : (
              readyToDeliver.map(job => (
-               <div key={job.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col hover:shadow-2xl transition-all border-b-8 border-b-green-500">
-                  <div className="p-7 flex-1 space-y-5">
-                    <div className="flex items-center justify-between">
-                       <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1"><CheckCircle size={12}/> خلص وجاهز للتسليم</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-right font-black text-slate-800 dark:text-white text-xl leading-tight">{job.phoneModel}</div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-[11px] font-bold text-right text-slate-600">
-                       {job.notes || 'تم الإصلاح بنجاح'}
-                    </div>
-                    <div className="text-sm font-bold text-slate-400 flex items-center justify-end gap-2 border-t pt-4 truncate">{job.customerName} <User size={16}/></div>
-                  </div>
-                  <div className="p-5 bg-slate-50 dark:bg-slate-800 border-t flex flex-col gap-4">
-                     <div className="flex items-center justify-between px-2">
-                        <div className="text-sm font-bold text-slate-500">الباقي: <span className="text-xl font-black text-red-500 tabular-nums">{job.cost - job.paidAmount} ج</span></div>
-                        <div className="text-sm font-bold text-slate-500">التكلفة: <span className="font-black text-slate-800 dark:text-white tabular-nums">{job.cost} ج</span></div>
+                <div key={job.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col hover:shadow-2xl transition-all border-b-8 border-b-green-500">
+                   <div className="p-7 flex-1 space-y-5">
+                     <div className="flex items-center justify-between">
+                        <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1"><CheckCircle size={12}/> خلص وجاهز للتسليم</span>
                      </div>
-                     <div className="flex gap-2 items-center">
-                        <button 
-                           onClick={() => handleCheckout(job, checkoutPayments[job.id] ?? (job.cost - job.paidAmount).toString())} 
-                           className="flex-1 bg-slate-900 dark:bg-blue-600 text-white px-4 py-3 rounded-2xl font-black shadow-lg text-sm active:scale-90 transition-all flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-blue-700"
-                        >
-                           <CreditCard size={18}/>
-                           استلم وسلم
-                        </button>
-                        <input 
-                           type="number" 
-                           placeholder="هيدفع كام؟" 
-                           className="w-2/5 p-3 text-sm border rounded-2xl bg-white dark:bg-slate-700 font-black text-center outline-none focus:border-blue-500" 
-                           value={checkoutPayments[job.id] ?? (job.cost - job.paidAmount)} 
-                           onChange={(e) => setCheckoutPayments({...checkoutPayments, [job.id]: e.target.value})}
-                        />
+                     <div className="flex items-center gap-4 text-right font-black text-slate-800 dark:text-white text-xl leading-tight">{job.phoneModel}</div>
+                     <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-[11px] font-bold text-right text-slate-600">
+                        {job.notes || 'تم الإصلاح بنجاح'}
                      </div>
-                     {(checkoutPayments[job.id] !== undefined ? Number(checkoutPayments[job.id]) : (job.cost - job.paidAmount)) < (job.cost - job.paidAmount) && (
-                        <div className="text-[10px] font-bold text-amber-700 text-right bg-amber-100 dark:bg-amber-900/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800/50">
-                           ⚠️ الباقي ({(job.cost - job.paidAmount) - (checkoutPayments[job.id] !== undefined ? Number(checkoutPayments[job.id]) : (job.cost - job.paidAmount))} ج) هيتسجل ديون مستحقة باسم {job.customerName}.
-                        </div>
-                     )}
-                  </div>
-               </div>
+                     <div className="text-sm font-bold text-slate-400 flex items-center justify-end gap-2 border-t pt-4 truncate">{job.customerName} <User size={16}/></div>
+                   </div>
+                   <div className="p-5 bg-slate-50 dark:bg-slate-800 border-t flex flex-col gap-4">
+                      <div className="flex items-center justify-between px-2">
+                         <div className="text-sm font-bold text-slate-500">الباقي: <span className="text-xl font-black text-red-500 tabular-nums">{job.cost - job.paidAmount} ج</span></div>
+                         <div className="text-sm font-bold text-slate-500">التكلفة: <span className="font-black text-slate-800 dark:text-white tabular-nums">{job.cost} ج</span></div>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                         <button 
+                            onClick={() => handleCheckout(job, checkoutPayments[job.id] ?? (job.cost - job.paidAmount).toString())} 
+                            className="flex-1 bg-slate-900 dark:bg-blue-600 text-white px-4 py-3 rounded-2xl font-black shadow-lg text-sm active:scale-90 transition-all flex items-center justify-center gap-2 hover:bg-slate-800 dark:hover:bg-blue-700"
+                         >
+                            <CreditCard size={18}/>
+                            استلم وسلم
+                         </button>
+                         <input 
+                            type="number" 
+                            placeholder="هيدفع كام؟" 
+                            className="w-2/5 p-3 text-sm border rounded-2xl bg-white dark:bg-slate-700 font-black text-center outline-none focus:border-blue-500" 
+                            value={checkoutPayments[job.id] ?? (job.cost - job.paidAmount)} 
+                            onChange={(e) => setCheckoutPayments({...checkoutPayments, [job.id]: e.target.value})}
+                         />
+                      </div>
+                      {(checkoutPayments[job.id] !== undefined ? Number(checkoutPayments[job.id]) : (job.cost - job.paidAmount)) < (job.cost - job.paidAmount) && (
+                         <div className="text-[10px] font-bold text-amber-700 text-right bg-amber-100 dark:bg-amber-900/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800/50">
+                            ⚠️ الباقي ({(job.cost - job.paidAmount) - (checkoutPayments[job.id] !== undefined ? Number(checkoutPayments[job.id]) : (job.cost - job.paidAmount))} ج) هيتسجل ديون مستحقة باسم {job.customerName}.
+                         </div>
+                      )}
+                   </div>
+                </div>
              ))
            )}
         </div>

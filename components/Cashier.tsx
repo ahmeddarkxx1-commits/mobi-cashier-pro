@@ -86,8 +86,12 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
 
   const isPart = (cat: string) => {
     const categoryName = (cat || '').toLowerCase();
-    const partKeywords = ['part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة'];
-    return partCategories.includes(cat) || partKeywords.some(k => categoryName.includes(k));
+    const partKeywords = [
+      'part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة',
+      'battery', 'screen', 'display', 'lcd', 'cable', 'charging', 'flex', 'camera', 'spare', 'repair'
+    ];
+    return partCategories.some((c: string) => c.toLowerCase() === categoryName) || 
+           partKeywords.some(k => categoryName.includes(k));
   };
 
   const filteredProducts = useMemo(() => {
