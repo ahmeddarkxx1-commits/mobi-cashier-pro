@@ -24,7 +24,8 @@ import {
   Shield,
   Layers,
   ChevronLeft,
-  Quote
+  Quote,
+  X
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -35,6 +36,8 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
   const [billingCycle, setBillingCycle] = useState<'1' | '3' | '12'>('1');
   const [scrolled, setScrolled] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -126,7 +129,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
                 <ChevronLeft size={20} className="md:w-6 md:h-6 group-hover:-translate-x-1 transition-transform" />
               </button>
               <a 
-                href="https://wa.me/201152628515" 
+                href="https://wa.me/201556533745" 
                 className="w-full sm:w-auto px-8 md:px-10 py-4 md:py-6 bg-slate-900/50 hover:bg-slate-800 text-white rounded-2xl md:rounded-[2rem] font-black text-lg md:text-xl transition-all border border-white/10 backdrop-blur-xl flex items-center justify-center gap-3 active:scale-95"
               >
                 <MessageCircle size={20} className="md:w-6 md:h-6 text-[#25D366]" />
@@ -217,6 +220,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
               title="مكسبك مجهول"
               desc="طلعت كام النهاردة؟ وإيه صافي ربحك؟ لو مش عارف أرقامك، يبقى أنت مش بتدير مشروع."
             />
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-32 relative z-10 overflow-hidden">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-5xl font-black mb-6 text-white tracking-tight">إزاي <span className="text-emerald-500">موبي كاشير برو</span> بينقذ محلك؟</h2>
+            <p className="text-slate-400 text-xl font-bold">خطوات بسيطة بتنقل محلك من العشوائية للاحترافية في دقايق.</p>
+          </div>
+
+          <div className="relative">
+            {/* Connection Line */}
+            <div className="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent -translate-y-1/2"></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+              <StepCard 
+                number="01"
+                title="سجل محلك"
+                desc="بضغطة واحدة، كريت حسابك وضيف بيانات محلك وموظفينك وحدد صلاحياتهم."
+                icon={<Smartphone className="text-emerald-500" />}
+              />
+              <StepCard 
+                number="02"
+                title="جرد مخزنك"
+                desc="ضيف بضاعتك وقطع الغيار بأسعارها وصورها. السيستم هيعرفك كل حاجة بالمللي."
+                icon={<Database className="text-blue-500" />}
+              />
+              <StepCard 
+                number="03"
+                title="ابدا بيع وصيانة"
+                desc="طلع فواتيرك، سجل صيانة عملاءك، وشوف تقارير مكسبك بتكبر قدام عينك لحظياً."
+                icon={<Zap className="text-amber-500" />}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -348,7 +387,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
               price={getPrice(350)}
               cycle={getCycleText()}
               desc="الباقة المتكاملة لكل احتياجات محلك."
-              features={["كل مميزات الأساسية", "منظومة صيانة متطورة", "إدارة الديون والآجل", "عدد موظفين مفتوح", "صلاحيات مستخدمين دقيقة", "تقارير أرباح وصافي ربح"]}
+              features={["كل مميزات الأساسية", "منظومة صيانة متطورة", "إدارة الديون والآجل", "إضافة 2 كاشير مجاناً", "صلاحيات مستخدمين دقيقة", "تقارير أرباح وصافي ربح"]}
               buttonText="ابدأ التجربة المجانية"
               highlighted
               onAction={() => onSelectPlan('PRO', billingCycle)}
@@ -369,7 +408,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
       </section>
 
       {/* FAQ Section - Clean Accordion */}
-      <section className="py-32 relative z-10 bg-slate-950/30 border-y border-white/5">
+      <section id="faq" className="py-32 relative z-10 bg-slate-950/30 border-y border-white/5">
         <div className="container mx-auto px-6">
           <div className="flex flex-col lg:flex-row gap-16">
             <div className="lg:w-1/3 text-right space-y-6">
@@ -377,7 +416,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
               <p className="text-slate-400 font-bold leading-relaxed">
                 جمعنا لك أكتر الأسئلة اللي بتوصلنا من أصحاب المحلات. لو عندك سؤال تاني، كلمنا واتساب فوراً.
               </p>
-              <a href="https://wa.me/201152628515" className="inline-flex items-center gap-2 text-emerald-500 font-black hover:gap-4 transition-all">
+              <a href="https://wa.me/201556533745" className="inline-flex items-center gap-2 text-emerald-500 font-black hover:gap-4 transition-all">
                 اسألنا على واتساب <ArrowLeft size={18} />
               </a>
             </div>
@@ -416,7 +455,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
                   <ArrowLeft size={28} />
                 </button>
                 <a 
-                  href="https://wa.me/201152628515" 
+                  href="https://wa.me/201556533745" 
                   className="w-full sm:w-auto px-10 py-7 bg-black/20 hover:bg-black/30 text-white rounded-[2.5rem] font-black text-xl transition-all border border-white/10 backdrop-blur-md flex items-center justify-center gap-3"
                 >
                   <MessageCircle size={24} />
@@ -447,18 +486,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
                 بنساعد أصحاب محلات الموبايلات والصيانة في مصر والوطن العربي يسيطروا على حساباتهم ويكبّروا مشاريعهم بذكاء.
               </p>
               <div className="flex items-center gap-4">
-                <SocialIcon icon={<MessageCircle size={20} />} href="https://wa.me/201152628515" />
-                <SocialIcon icon={<Globe size={20} />} href="#" />
+                <SocialIcon icon={<MessageCircle size={20} />} href="https://wa.me/201556533745" />
+                <SocialIcon icon={<Globe size={20} />} href="https://mobicashierproapp.vercel.app" />
               </div>
             </div>
             
             <div className="space-y-6">
               <h4 className="text-white font-black text-lg">روابط سريعة</h4>
               <ul className="space-y-4 text-slate-500 font-bold">
-                <li><a href="#" className="hover:text-emerald-500 transition-colors">عن البرنامج</a></li>
+                <li><a href="#how-it-works" className="hover:text-emerald-500 transition-colors">عن البرنامج</a></li>
                 <li><a href="#features" className="hover:text-emerald-500 transition-colors">المميزات</a></li>
                 <li><a href="#pricing" className="hover:text-emerald-500 transition-colors">الباقات</a></li>
-                <li><a href="#" className="hover:text-emerald-500 transition-colors">مركز المساعدة</a></li>
+                <li><a href="#faq" className="hover:text-emerald-500 transition-colors">مركز المساعدة</a></li>
               </ul>
             </div>
 
@@ -466,8 +505,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
               <h4 className="text-white font-black text-lg">تواصل معنا</h4>
               <ul className="space-y-4 text-slate-500 font-bold">
                 <li>المقر: القاهرة، مصر</li>
-                <li>مبيعات: 01152628515</li>
-                <li>دعم فني: 01000000000</li>
+                <li>مبيعات: 01556533745</li>
+                <li>دعم فني: 01556533745</li>
                 <li>ايميل: info@al3alme.com</li>
               </ul>
             </div>
@@ -476,17 +515,62 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
           <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-slate-600 text-sm font-bold">
             <p>جميع الحقوق محفوظة &copy; {new Date().getFullYear()} - Al3alme Systems</p>
             <div className="flex items-center gap-8">
-              <a href="#" className="hover:text-white transition-colors">سياسة الخصوصية</a>
-              <a href="#" className="hover:text-white transition-colors">شروط الاستخدام</a>
+              <button onClick={() => setShowPrivacy(true)} className="hover:text-white transition-colors">سياسة الخصوصية</button>
+              <button onClick={() => setShowTerms(true)} className="hover:text-white transition-colors">شروط الاستخدام</button>
             </div>
           </div>
         </div>
       </footer>
 
+      {/* Modals */}
+      {showPrivacy && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-10 max-w-2xl w-full max-h-[80vh] overflow-y-auto relative">
+            <button onClick={() => setShowPrivacy(false)} className="absolute top-6 left-6 text-slate-400 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+            <h3 className="text-3xl font-black mb-8 text-white text-right">سياسة الخصوصية</h3>
+            <div className="space-y-6 text-slate-400 font-bold leading-relaxed text-right" dir="rtl">
+              <p>نحن في موبي كاشير برو نلتزم بحماية بياناتك وخصوصيتك. إليك أهم نقاط سياستنا:</p>
+              <ul className="list-disc pr-6 space-y-4">
+                <li>يتم تشفير جميع البيانات الحساسة باستخدام بروتوكولات أمان عالمية.</li>
+                <li>لا يتم مشاركة بيانات محلك أو مبيعاتك مع أي طرف ثالث تحت أي ظرف.</li>
+                <li>يتم أخذ نسخ احتياطية تلقائية كل 12 ساعة لضمان عدم فقدان أي معلومة.</li>
+                <li>نستخدم ملفات تعريف الارتباط (Cookies) فقط لتحسين تجربة تسجيل الدخول وحفظ إعداداتك المفضلة.</li>
+                <li>لك الحق الكامل في طلب حذف بياناتك أو تصديرها في أي وقت.</li>
+              </ul>
+              <p className="pt-4 text-emerald-500">آخر تحديث: مايو 2026</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTerms && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-10 max-w-2xl w-full max-h-[80vh] overflow-y-auto relative">
+            <button onClick={() => setShowTerms(false)} className="absolute top-6 left-6 text-slate-400 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+            <h3 className="text-3xl font-black mb-8 text-white text-right">شروط الاستخدام</h3>
+            <div className="space-y-6 text-slate-400 font-bold leading-relaxed text-right" dir="rtl">
+              <p>باستخدامك لنظام موبي كاشير برو، فأنت توافق على الشروط التالية:</p>
+              <ul className="list-disc pr-6 space-y-4">
+                <li>الاشتراك مخصص لاستخدام محل واحد أو الفروع المحددة في الباقة، ولا يجوز إعادة بيع الخدمة.</li>
+                <li>يلتزم المستخدم بعدم استخدام النظام في أي أنشطة غير قانونية أو تخريبية.</li>
+                <li>جميع حقوق الملكية الفكرية للتصميم والبرمجة محفوظة لشركة Al3alme Systems.</li>
+                <li>نحن غير مسؤولين عن أي خسارة ناتجة عن سوء استخدام الحساب أو تسريب كلمة المرور من قبل المستخدم.</li>
+                <li>نحتفظ بالحق في تحديث الأسعار والمميزات مع إخطار المشتركين مسبقاً بفترة كافية.</li>
+              </ul>
+              <p className="pt-4 text-emerald-500">بمتابعة استخدام النظام، أنت تقر بموافقتك على هذه الشروط.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modern Floating Action Button */}
       <div className="fixed bottom-8 right-8 z-[110] flex flex-col items-end gap-4">
         <a 
-          href="https://wa.me/201152628515" 
+          href="https://wa.me/201556533745" 
           target="_blank" 
           rel="noreferrer"
           className="group relative flex items-center gap-4 bg-[#25D366] text-white p-2 md:p-2 pr-8 md:pr-8 rounded-full shadow-2xl shadow-[#25D366]/40 transition-all hover:pr-10 active:scale-95"
@@ -623,6 +707,19 @@ const SocialIcon = ({ icon, href }: any) => (
   <a href={href} target="_blank" rel="noreferrer" className="w-12 h-12 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400 hover:text-emerald-500 hover:border-emerald-500/30 transition-all hover:-translate-y-1">
     {icon}
   </a>
+);
+
+const StepCard = ({ number, title, desc, icon }: any) => (
+  <div className="p-8 bg-slate-900/50 border border-white/5 rounded-[2.5rem] hover:bg-slate-900/80 transition-all group relative overflow-hidden text-right">
+    <div className="absolute -top-4 -left-4 text-7xl font-black text-white/5 group-hover:text-emerald-500/10 transition-colors">{number}</div>
+    <div className="relative z-10">
+      <div className="w-14 h-14 bg-slate-950 rounded-2xl flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform">
+        {icon}
+      </div>
+      <h3 className="text-xl font-black mb-3 text-white">{title}</h3>
+      <p className="text-slate-400 font-bold leading-relaxed text-sm">{desc}</p>
+    </div>
+  </div>
 );
 
 export default LandingPage;

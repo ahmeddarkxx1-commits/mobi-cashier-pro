@@ -22,6 +22,11 @@ DROP POLICY IF EXISTS "Enable read access for all users" ON public.profiles;
 ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS duration TEXT DEFAULT '3_days_trial';
 ALTER TABLE public.shops ADD COLUMN IF NOT EXISTS owner_phone TEXT;
 
+-- إضافة أعمدة حماية الجهاز لجدول profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_wait_until TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_ip TEXT;
+
 -- الخطوة 4: إعادة تفعيل RLS بـ policies بسيطة وصحيحة
 ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Bell, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Bell, CheckCircle, XCircle, LogOut, Clock, ShieldCheck } from 'lucide-react';
+import Swal from 'sweetalert2';
 import StoreApp from './StoreApp';
 import SuperAdminApp from './SuperAdminApp';
 import LoginPage from './LoginPage';
@@ -39,27 +40,122 @@ const App: React.FC = () => {
     globalMessage: '',
     themeMode: 'dark'
   });
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+  const [isWaitingForDevice, setIsWaitingForDevice] = useState(false);
+  const [waitTimeLeft, setWaitTimeLeft] = useState<number>(0);
+  const [activeDeviceName, setActiveDeviceName] = useState<string>('');
+  const [activeDeviceIp, setActiveDeviceIp] = useState<string>('');
+  const [isDeviceActivelyInUse, setIsDeviceActivelyInUse] = useState(false);
+
+  // Helper: Get human-readable device name
+  const getDeviceName = (): string => {
+    const ua = navigator.userAgent;
+    let device = 'جهاز غير معروف';
+    if (/iPhone/.test(ua)) device = 'iPhone';
+    else if (/iPad/.test(ua)) device = 'iPad';
+    else if (/Android/.test(ua)) {
+      const match = ua.match(/Android.*?;\s*([^)]+)\)/);
+      device = match ? match[1].trim().split(' ').slice(0, 2).join(' ') : 'Android';
+    }
+    else if (/Windows/.test(ua)) device = 'Windows PC';
+    else if (/Macintosh|Mac OS X/.test(ua)) device = 'Mac';
+    else if (/Linux/.test(ua)) device = 'Linux';
+
+    let browser = '';
+    if (/Edg\//.test(ua)) browser = 'Edge';
+    else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) browser = 'Chrome';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+
+    const devId = localStorage.getItem('mobi_cashier_device_id') || '';
+    const shortId = devId.substring(4, 10).toUpperCase();
+    return browser ? `${device} · ${browser} [${shortId}]` : `${device} [${shortId}]`;
+  };
+
+  // Helper: Get public IP address
+  const getDeviceIp = async (): Promise<string> => {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      return data.ip || '';
+    } catch {
+      return '';
+    }
+  };
+
+  // Generate or retrieve Device ID
+  useEffect(() => {
+    let devId = localStorage.getItem('mobi_cashier_device_id');
+    if (!devId) {
+      devId = 'dev_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+      localStorage.setItem('mobi_cashier_device_id', devId);
+    }
+    setCurrentDeviceId(devId);
+  }, []);
+
+  // Heartbeat: update last_seen every 2 minutes to signal device is active
+  useEffect(() => {
+    if (!session?.user?.id || isWaitingForDevice) return;
+    const updateHeartbeat = async () => {
+      await supabase.from('profiles').update({
+        last_seen: new Date().toISOString()
+      }).eq('id', session.user.id);
+    };
+    updateHeartbeat();
+    const heartbeat = setInterval(updateHeartbeat, 2 * 60 * 1000);
+    return () => clearInterval(heartbeat);
+  }, [session?.user?.id, isWaitingForDevice]);
+
+  // Polling for waiting device: check every 30s if authorized device has gone offline
+  useEffect(() => {
+    if (!isWaitingForDevice || !session?.user?.id) return;
+    const checkIfDeviceLeft = setInterval(async () => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('last_seen, device_wait_until, device_id')
+        .eq('id', session.user.id)
+        .single();
+      if (!profile) return;
+      const devId = localStorage.getItem('mobi_cashier_device_id');
+      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+      const isStillActive = profile.last_seen && new Date(profile.last_seen) > threeMinutesAgo && profile.device_id !== devId;
+      if (!isStillActive && isDeviceActivelyInUse) {
+        // Original device went offline - start the 2h timer
+        const waitDate = new Date();
+        waitDate.setHours(waitDate.getHours() + 2);
+        await supabase.from('profiles').update({ device_wait_until: waitDate.toISOString() }).eq('id', session.user.id);
+        setIsDeviceActivelyInUse(false);
+        setWaitTimeLeft(2 * 60 * 60);
+      }
+    }, 30 * 1000);
+    return () => clearInterval(checkIfDeviceLeft);
+  }, [isWaitingForDevice, session?.user?.id, isDeviceActivelyInUse]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) setAppState('app');
-      else setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session) {
-        if (appState === 'login') {
+        setAppState('app');
+        fetchUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // تجاهل أحداث التحديث لمنع الحلقة المفرغة
+      if (_event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') return;
+
+      setSession(session);
+      if (session) {
+        if (appState === 'login' || appState === 'landing') {
           setAppState('app');
         }
         fetchUserProfile(session.user.id);
       } else {
         setAppState('landing');
         setLoading(false);
-        setUserRole('CASHIER');
-        setTenantId(null);
-        setIsLocked(false);
+        setIsWaitingForDevice(false);
       }
     });
 
@@ -67,6 +163,22 @@ const App: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Waiting Room Logic Timer
+  useEffect(() => {
+    if (!isWaitingForDevice || waitTimeLeft <= 0) return;
+    const timer = setInterval(() => {
+      setWaitTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          window.location.reload(); // إعادة التحميل للدخول بعد انتهاء الوقت
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isWaitingForDevice, waitTimeLeft]);
 
   // Check for pending invites for the current user
   useEffect(() => {
@@ -113,6 +225,66 @@ const App: React.FC = () => {
 
     return () => { supabase.removeChannel(configSub); };
   }, []);
+
+  // Realtime Profile Security Listener
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const profileSub = supabase.channel(`profile_security_${session.user.id}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: `id=eq.${session.user.id}`
+      }, (payload) => {
+        const newProfile = payload.new;
+        const devId = localStorage.getItem('mobi_cashier_device_id');
+        
+        console.log('Security Update Received:', newProfile);
+
+        const userDevId = newProfile.device_id;
+        const waitUntil = newProfile.device_wait_until;
+        const lastSeen = newProfile.last_seen;
+        const authorizedDeviceName = newProfile.device_name || 'جهاز غير معروف';
+        const authorizedDeviceIp = newProfile.last_ip || '';
+
+        // إذا كان هذا هو جهازي، تأكد أنني لست محجوباً (نادراً ما يحدث)
+        if (userDevId === devId) {
+          setIsWaitingForDevice(false);
+          setIsDeviceActivelyInUse(false);
+          return;
+        }
+
+        // إذا كنت جهازاً مختلفاً
+        if (userDevId && userDevId !== devId) {
+          const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+          const isAuthorizedOnline = lastSeen && new Date(lastSeen) > threeMinutesAgo;
+
+          setActiveDeviceName(authorizedDeviceName);
+          setActiveDeviceIp(authorizedDeviceIp);
+
+          if (isAuthorizedOnline) {
+            setIsDeviceActivelyInUse(true);
+            setIsWaitingForDevice(true);
+            setWaitTimeLeft(0);
+          } else if (waitUntil) {
+            const now = new Date().getTime();
+            const waitTime = new Date(waitUntil).getTime();
+            if (now < waitTime) {
+              setIsDeviceActivelyInUse(false);
+              setIsWaitingForDevice(true);
+              setWaitTimeLeft(Math.ceil((waitTime - now) / 1000));
+            } else {
+              // الوقت انتهى، المفروض fetchUserProfile هو اللي يتعامل مع النقل
+              setIsWaitingForDevice(false);
+            }
+          }
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(profileSub); };
+  }, [session?.user?.id]);
 
 
   const handleAcceptInvite = async (invite: any) => {
@@ -212,6 +384,8 @@ const App: React.FC = () => {
     const interval = setInterval(async () => {
       if (!session?.user?.id) return;
 
+      // تم إزالة فحص الدخول المزدوج القديم لصالح نظام غرفة الانتظار الموحد في قاعدة البيانات
+
       // إذا لم يكن هناك tenantId بعد (حساب pending)، أعد جلب البروفايل كاملاً
       if (!tenantId) {
         fetchUserProfile(session.user.id);
@@ -220,8 +394,15 @@ const App: React.FC = () => {
 
       const { data: prof } = await supabase.from('profiles').select('tenant_id').eq('id', session.user.id).single();
       if (prof && prof.tenant_id === null && userRole !== 'SUPER_ADMIN') {
-        alert("تم إزالتك من هذا المحل. سيتم تسجيل خروجك الآن.");
-        handleLogout();
+        Swal.fire({
+          icon: 'info',
+          text: 'تم إزالتك من هذا المحل بواسطة المالك.',
+          background: '#0f172a',
+          color: '#fff',
+          confirmButtonText: 'حسناً'
+        }).then(() => {
+          handleLogout();
+        });
         return;
       }
 
@@ -236,12 +417,29 @@ const App: React.FC = () => {
       } else if (!error && !shop && userRole !== 'SUPER_ADMIN') {
         // المحل تم حذفه فعلياً من قاعدة البيانات
         Swal.fire({
-          icon: 'error',
-          title: 'تنبيه هام',
-          text: 'عذراً، هذا المحل لم يعد متاحاً على النظام. يرجى التواصل مع الإدارة.',
+          title: '<div class="text-2xl font-black text-amber-500 mb-2">تنبيه النظام</div>',
+          html: `
+            <div class="flex flex-col items-center gap-4 py-4">
+              <div class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <p class="text-slate-300 font-bold text-lg leading-relaxed">
+                عذراً، بيانات هذا المحل لم تعد متوفرة.
+                <br/>
+                <span class="text-slate-500 text-sm">حسابك لا يزال موجوداً، ولكن المحل المرتبط به قد تم حذفه أو نقله.</span>
+              </p>
+            </div>
+          `,
           background: '#0f172a',
-          color: '#fff',
-          confirmButtonText: 'خروج'
+          confirmButtonColor: '#3b82f6',
+          confirmButtonText: 'تسجيل الخروج والمتابعة',
+          padding: '2rem',
+          customClass: {
+            popup: 'rounded-[3rem] border border-slate-800 shadow-2xl',
+            confirmButton: 'rounded-2xl px-8 py-4 font-black text-lg shadow-lg shadow-blue-500/20'
+          },
+          allowOutsideClick: false,
+          backdrop: `rgba(2, 6, 23, 0.9)`
         }).then(() => {
           handleLogout();
         });
@@ -286,22 +484,108 @@ const App: React.FC = () => {
   const fetchUserProfile = async (userId: string) => {
     setLoading(true);
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const meta = currentUser?.user_metadata;
+      const devId = localStorage.getItem('mobi_cashier_device_id');
+      
+      console.log('--- Security Check ---');
+      console.log('Current Device ID (Local):', devId);
+      console.log('Authorized Device ID (Metadata):', meta?.device_id);
+      console.log('Wait Until (Metadata):', meta?.wait_until);
+
+      // جلب بيانات البروفايل أولاً للفحص
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role, tenant_id')
+        .select('role, tenant_id, device_id, device_wait_until, last_seen, device_name, last_ip')
         .eq('id', userId)
         .single();
 
       if (error) {
         console.error('Error fetching profile:', error);
-        // تغيير مهم: إذا لم نجد الملف الشخصي، هذا يعني أن المستخدم جديد جداً
-        // سنفترض أنه صاحب محل قيد المراجعة بدلاً من تركه يرى شاشة خطأ
         setUserRole('OWNER');
         setIsLocked(true);
         setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
       } else {
         setUserRole(profile.role as UserRole);
         setTenantId(profile.tenant_id);
+
+        const userDevId = profile.device_id;
+        const waitUntil = profile.device_wait_until;
+        const lastSeen = profile.last_seen;
+        const authorizedDeviceName = profile.device_name || 'جهاز غير معروف';
+        const authorizedDeviceIp = profile.last_ip || '';
+
+        // 1. الجهاز المعتمد - يدخل مباشرة ويحدث بياناته
+        if (userDevId === devId) {
+          const myName = getDeviceName();
+          const myIp = await getDeviceIp();
+          await supabase.from('profiles').update({
+            last_seen: new Date().toISOString(),
+            device_name: myName,
+            last_ip: myIp || undefined
+          }).eq('id', userId);
+        }
+        // 2. جهاز مختلف عن المعتمد
+        else if (userDevId && devId && userDevId !== devId) {
+          const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+          const isAuthorizedOnline = lastSeen && new Date(lastSeen) > threeMinutesAgo;
+
+          if (isAuthorizedOnline) {
+            setActiveDeviceName(authorizedDeviceName);
+            setActiveDeviceIp(authorizedDeviceIp);
+            setIsDeviceActivelyInUse(true);
+            setIsWaitingForDevice(true);
+            setWaitTimeLeft(0);
+            setLoading(false);
+            return;
+          } else if (waitUntil) {
+            const now = new Date().getTime();
+            const waitTime = new Date(waitUntil).getTime();
+            if (now < waitTime) {
+              setActiveDeviceName(authorizedDeviceName);
+              setActiveDeviceIp(authorizedDeviceIp);
+              setIsDeviceActivelyInUse(false);
+              setIsWaitingForDevice(true);
+              setWaitTimeLeft(Math.ceil((waitTime - now) / 1000));
+              setLoading(false);
+              return;
+            } else {
+              const myName = getDeviceName();
+              const myIp = await getDeviceIp();
+              await supabase.from('profiles').update({
+                device_id: devId,
+                device_wait_until: null,
+                device_name: myName,
+                last_ip: myIp || undefined,
+                last_seen: new Date().toISOString()
+              }).eq('id', userId);
+            }
+          } else {
+            const waitDate = new Date();
+            waitDate.setHours(waitDate.getHours() + 2);
+            await supabase.from('profiles').update({
+              device_wait_until: waitDate.toISOString()
+            }).eq('id', userId);
+            setActiveDeviceName(authorizedDeviceName);
+            setActiveDeviceIp(authorizedDeviceIp);
+            setIsDeviceActivelyInUse(false);
+            setIsWaitingForDevice(true);
+            setWaitTimeLeft(2 * 60 * 60);
+            setLoading(false);
+            return;
+          }
+        }
+        // 3. أول دخول - لا يوجد device_id مسجل
+        else if (!userDevId && devId) {
+          const myName = getDeviceName();
+          const myIp = await getDeviceIp();
+          await supabase.from('profiles').update({
+            device_id: devId,
+            device_name: myName,
+            last_ip: myIp || undefined,
+            last_seen: new Date().toISOString()
+          }).eq('id', userId);
+        }
 
         // *** الإصلاح الحقيقي ***
         // إذا كان صاحب محل ولكن ليس لديه tenant_id بعد (الـ trigger لم يكتمل)
@@ -409,7 +693,6 @@ const App: React.FC = () => {
       />
     );
   }
-
   if (!session || appState === 'login') {
     return (
       <div className="relative min-h-screen bg-[#020617]" dir="rtl">
@@ -423,6 +706,100 @@ const App: React.FC = () => {
           setSession(sess);
           setAppState('app');
         }} />
+      </div>
+    );
+  }
+
+
+
+  if (isWaitingForDevice) {
+    const hours = Math.floor(waitTimeLeft / 3600);
+    const minutes = Math.floor((waitTimeLeft % 3600) / 60);
+    const seconds = waitTimeLeft % 60;
+
+    return (
+      <div className="min-h-screen bg-[#020617] text-white font-['Cairo'] flex items-center justify-center p-6 relative overflow-hidden" dir="rtl">
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
+          <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-blue-600 rounded-full blur-[120px]" />
+          <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-purple-600 rounded-full blur-[120px]" />
+        </div>
+
+        <div className="max-w-md w-full bg-slate-900/50 backdrop-blur-2xl border border-slate-800 p-10 rounded-[3rem] shadow-2xl text-center space-y-8 relative z-10">
+          
+          {isDeviceActivelyInUse ? (
+            <>
+              <div className="w-24 h-24 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+                <ShieldCheck size={48} className="text-rose-500 animate-pulse" />
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black tracking-tight text-rose-400">الحساب قيد الاستخدام!</h2>
+                <p className="text-slate-300 font-bold leading-relaxed">
+                  هذا الحساب مفتوح حالياً ومستخدم على جهاز آخر. لا يمكنك الدخول حتى يتم تسجيل الخروج من الجهاز الأصلي.
+                </p>
+                <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-500">الجهاز:</span>
+                    <span className="font-bold text-blue-400 text-sm" dir="ltr">{activeDeviceName}</span>
+                  </div>
+                  {activeDeviceIp && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500">IP:</span>
+                      <span className="font-mono font-bold text-emerald-400 text-sm" dir="ltr">{activeDeviceIp}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-24 h-24 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20">
+                <Clock size={48} className="text-amber-500 animate-pulse" />
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black tracking-tight">غرفة الانتظار الأمنية</h2>
+                <p className="text-slate-400 font-bold leading-relaxed">
+                  هذا الحساب كان مفتوحاً على جهاز آخر. لحماية خصوصيتك، يجب الانتظار <span className="text-amber-500">ساعتين</span> قبل تبديل الجهاز.
+                </p>
+                <div className="bg-slate-950/50 p-3 rounded-2xl border border-slate-800 mt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">الجهاز:</span>
+                    <span className="font-bold text-slate-300 text-sm" dir="ltr">{activeDeviceName}</span>
+                  </div>
+                  {activeDeviceIp && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-500">IP:</span>
+                      <span className="font-mono font-bold text-emerald-400 text-sm" dir="ltr">{activeDeviceIp}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { val: hours, label: 'ساعة' },
+                  { val: minutes, label: 'دقيقة' },
+                  { val: seconds, label: 'ثانية' }
+                ].map((t, i) => (
+                  <div key={i} className="bg-slate-950/50 border border-slate-800 p-4 rounded-2xl">
+                    <div className="text-3xl font-black text-white tabular-nums">{String(t.val).padStart(2, '0')}</div>
+                    <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">{t.label}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="pt-4 space-y-4">
+            <button 
+              onClick={handleLogout}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <LogOut size={20} /> إلغاء والمغادرة
+            </button>
+            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+              <ShieldCheck size={12} /> SECURE DEVICE SWAP PROTOCOL
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

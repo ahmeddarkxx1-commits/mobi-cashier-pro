@@ -48,6 +48,7 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
             phone: phone.trim(),
             selected_plan: 'BASIC',
             is_new_owner: 'true',
+            device_id: localStorage.getItem('mobi_cashier_device_id') || ('dev_' + Math.random().toString(36).substring(2, 15))
           }
         }
       });

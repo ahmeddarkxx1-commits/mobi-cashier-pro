@@ -90,7 +90,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   };
 
   const fetchShopUsers = async (shopId: string) => {
-    const { data } = await supabase.from('profiles').select('id, full_name, role').eq('tenant_id', shopId);
+    const { data } = await supabase.from('profiles').select('id, full_name, role, last_ip, device_id, last_login, device_wait_until').eq('tenant_id', shopId);
     if (data) setShopUsers(prev => ({ ...prev, [shopId]: data }));
     const { data: invites } = await supabase.from('shop_invites').select('*').eq('shop_id', shopId).eq('accepted', false);
     if (invites) setShopInvites(prev => ({ ...prev, [shopId]: invites }));
@@ -633,16 +633,34 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                             {users.map(u => (
-                              <div key={u.id} className="bg-slate-900 rounded-xl p-3 flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                                  u.role === 'OWNER' ? 'bg-amber-500/20 text-amber-400' :
-                                  u.role === 'MANAGER' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'
-                                }`}>
-                                  {u.role === 'OWNER' ? '👑' : u.role === 'MANAGER' ? '🔧' : '💼'}
+                              <div key={u.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
+                                    u.role === 'OWNER' ? 'bg-amber-500/20 text-amber-400' :
+                                    u.role === 'MANAGER' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'
+                                  }`}>
+                                    {u.role === 'OWNER' ? '👑' : u.role === 'MANAGER' ? '🔧' : '💼'}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-black truncate">{u.full_name || 'بدون اسم'}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold">{u.role === 'OWNER' ? 'صاحب المحل' : u.role === 'MANAGER' ? 'مدير' : 'كاشير'}</p>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-black truncate">{u.full_name || 'بدون اسم'}</p>
-                                  <p className="text-[10px] text-slate-500 font-bold">{u.role === 'OWNER' ? 'صاحب المحل' : u.role === 'MANAGER' ? 'مدير' : 'كاشير'}</p>
+                                
+                                <div className="pt-2 border-t border-slate-800 space-y-1">
+                                  <div className="flex items-center justify-between text-[9px] font-bold">
+                                    <span className="text-slate-500">IP:</span>
+                                    <span className="text-blue-400">{u.last_ip || '---'}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[9px] font-bold">
+                                    <span className="text-slate-500">البصمة:</span>
+                                    <span className="text-emerald-400 truncate max-w-[120px]" title={u.device_id}>{u.device_id ? u.device_id : '---'}</span>
+                                  </div>
+                                  {u.device_wait_until && new Date(u.device_wait_until) > new Date() && (
+                                    <div className="flex items-center gap-1 mt-1 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded text-[8px] animate-pulse">
+                                      <Clock size={8} /> في الانتظار (تبديل جهاز)
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             ))}

@@ -22,6 +22,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setError(null);
 
     try {
+      const devId = localStorage.getItem('mobi_cashier_device_id') || ('dev_' + Math.random().toString(36).substring(2, 15));
+      if (!localStorage.getItem('mobi_cashier_device_id')) localStorage.setItem('mobi_cashier_device_id', devId);
+
+      // جلب عنوان الـ IP للتوثيق في لوحة الأدمن
+      let userIp = 'Unknown';
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipRes.json();
+        userIp = ipData.ip;
+      } catch (e) { console.error('IP fetch failed'); }
+
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -29,6 +40,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           options: {
             data: {
               full_name: fullName,
+              device_id: devId,
+              last_ip: userIp
             }
           }
         });
@@ -50,6 +63,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
         if (error) throw error;
         if (data.session) {
+          // تحديث الـ IP ووقت الدخول فقط دون المساس ببصمة الجهاز الموثقة
+          await supabase.auth.updateUser({
+            data: { 
+              last_ip: userIp,
+              last_login: new Date().toISOString()
+            }
+          });
           onLoginSuccess(data.session);
         }
       }
