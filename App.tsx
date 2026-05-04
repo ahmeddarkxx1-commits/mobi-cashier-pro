@@ -524,7 +524,7 @@ const App: React.FC = () => {
       // جلب بيانات البروفايل أولاً للفحص
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role, tenant_id, device_id, device_wait_until, last_seen, device_name, last_ip')
+        .select('id, role, tenant_id, device_id, device_wait_until, last_seen, device_name, last_ip')
         .eq('id', userId)
         .single();
 
@@ -534,27 +534,13 @@ const App: React.FC = () => {
         setIsLocked(true);
         setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
       } else {
-        setUserRole(profile.role as UserRole);
-        setTenantId(profile.tenant_id);
-
         const userDevId = profile.device_id;
-        const waitUntil = profile.device_wait_until;
         const lastSeen = profile.last_seen;
         const authorizedDeviceName = profile.device_name || 'جهاز غير معروف';
         const authorizedDeviceIp = profile.last_ip || '';
 
-        // 1. الجهاز المعتمد - يدخل مباشرة ويحدث بياناته
-        if (userDevId === devId) {
-          const myName = getDeviceName();
-          const myIp = await getDeviceIp();
-          await supabase.from('profiles').update({
-            last_seen: new Date().toISOString(),
-            device_name: myName,
-            last_ip: myIp || undefined
-          }).eq('id', userId);
-        }
-        // 2. جهاز مختلف عن المعتمد
-        else if (userDevId && devId && userDevId !== devId) {
+        // التحقق من هوية الجهاز
+        if (userDevId && devId && userDevId !== devId) {
           // استثناء: السوبر أدمن يمكنه الدخول من أي جهاز مع تحديث البيانات
           if (profile.role === 'SUPER_ADMIN') {
             const myName = getDeviceName();
@@ -567,11 +553,10 @@ const App: React.FC = () => {
               device_wait_until: null
             }).eq('id', userId);
 
-            // إشعار للأدمن بأنه تم تجاوز القفل
             Swal.fire({
               icon: 'info',
               title: 'تنبيه الأدمن',
-              text: `تم السماح بالدخول لجهاز الأدمن. كان هناك نشاط سابق من جهاز: ${authorizedDeviceName} (${authorizedDeviceIp})`,
+              text: `تم السماح بالدخول لجهاز الأدمن. كان هناك نشاط سابق من جهاز: ${authorizedDeviceName}`,
               toast: true,
               position: 'top-end',
               showConfirmButton: false,
@@ -580,12 +565,15 @@ const App: React.FC = () => {
               color: '#fff'
             });
           } else {
+            // للمستخدمين العاديين: تفعيل غرفة الانتظار فوراً إذا كان الجهاز مختلفاً
+            setIsWaitingForDevice(true);
+            setActiveDeviceName(authorizedDeviceName);
+            setActiveDeviceIp(authorizedDeviceIp);
+            
             const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
             const isAuthorizedOnline = lastSeen && new Date(lastSeen) > threeMinutesAgo;
-
+            
             if (isAuthorizedOnline) {
-              setActiveDeviceName(authorizedDeviceName);
-              setActiveDeviceIp(authorizedDeviceIp);
               setIsDeviceActivelyInUse(true);
               setIsWaitingForDevice(true);
               setWaitTimeLeft(0);

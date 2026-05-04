@@ -499,6 +499,15 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     return <span className="px-2 py-1 rounded-full text-[10px] font-black bg-red-500/20 text-red-400">متوقف</span>;
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen bg-slate-950 flex flex-col items-center justify-center text-white gap-4 font-['Cairo']">
+        <RefreshCw className="animate-spin text-red-500" size={48} />
+        <p className="font-black animate-pulse">جاري تحميل بيانات الإدارة...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white font-['Cairo'] flex flex-col" dir="rtl">
       {/* Header */}

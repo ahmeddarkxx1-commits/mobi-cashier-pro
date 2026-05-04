@@ -438,6 +438,15 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     );
   }
 
+  if (loading) {
+    return (
+      <div className="h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-500 gap-4 font-['Cairo']">
+        <Loader2 className="animate-spin text-blue-500" size={48} />
+        <p className="font-black animate-pulse">جاري تحميل بيانات المحل...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white text-right font-['Cairo'] overflow-hidden transition-colors duration-300" dir="rtl">
       {isSidebarOpen && (
