@@ -35,7 +35,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   useEffect(() => {
     if (!shopId) return;
     fetchTeam();
-    const interval = setInterval(fetchTeam, 3000);
+    const interval = setInterval(fetchTeam, 30000);
     const channel = supabase.channel(`team_${shopId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `tenant_id=eq.${shopId}` }, fetchTeam)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shop_invites', filter: `shop_id=eq.${shopId}` }, fetchTeam)

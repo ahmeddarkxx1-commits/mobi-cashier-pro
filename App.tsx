@@ -352,13 +352,12 @@ const App: React.FC = () => {
     const interval = setInterval(async () => {
       if (!session?.user?.id) return;
       if (!tenantId) {
-        fetchUserProfile(session.user.id);
+        fetchUserProfile(session.user.id, true);
         return;
       }
       const { data: shop, error } = await supabase.from('shops').select('status, expiry_date, plan, duration').eq('id', tenantId).maybeSingle();
       if (shop) checkSubscription(shop);
-      else if (!error && !shop && userRole !== 'SUPER_ADMIN') handleLogout();
-    }, 5000);
+    }, 30000);
 
     return () => {
       supabase.removeChannel(shopSubscription);
@@ -379,8 +378,8 @@ const App: React.FC = () => {
     return () => clearInterval(pendingInterval);
   }, [session, tenantId, userRole]);
 
-  const fetchUserProfile = async (userId: string) => {
-    setLoading(true);
+  const fetchUserProfile = async (userId: string, isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
