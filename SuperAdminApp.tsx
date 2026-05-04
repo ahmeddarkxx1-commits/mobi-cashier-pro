@@ -731,10 +731,18 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                   
                                   <div className="pt-3 border-t border-slate-800 space-y-2 relative z-10">
                                     <div className="grid grid-cols-2 gap-2">
-                                      <div className="bg-slate-950/50 p-2 rounded-xl border border-slate-800/50">
-                                        <p className="text-[8px] text-slate-500 font-black mb-1 uppercase tracking-wider">الجهاز المسجل</p>
-                                        <p className="text-[10px] text-slate-300 font-bold truncate" title={u.device_name}>{u.device_name || 'غير معروف'}</p>
-                                      </div>
+                                       <div className="flex flex-col">
+                                         <p className="text-[8px] text-slate-500 font-black uppercase">حد الأجهزة</p>
+                                         <p className="text-[10px] text-blue-400 font-black">
+                                           {u.device_id ? u.device_id.split(',').length : 0} / {u.max_devices || 1} جهاز
+                                         </p>
+                                       </div>
+                                       <div className="flex flex-col text-left">
+                                         <p className="text-[8px] text-slate-500 font-black uppercase text-left">الأجهزة الموثقة</p>
+                                         <p className="text-[9px] text-slate-300 font-bold max-w-[120px] truncate" dir="ltr">
+                                           {u.device_name || 'لا يوجد'}
+                                         </p>
+                                       </div>
                                       <div className="bg-slate-950/50 p-2 rounded-xl border border-slate-800/50">
                                         <p className="text-[8px] text-slate-500 font-black mb-1 uppercase tracking-wider">عنوان IP</p>
                                         <p className="text-[10px] text-emerald-400 font-mono font-bold">{u.last_ip || '---.---.---'}</p>

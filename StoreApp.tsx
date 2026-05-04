@@ -206,16 +206,16 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     fetchAndCombine();
   }, [shopId, globalNotifications]);
 
-  // Fetch trial info - يعتمد على shopId (يُعين بعد fetchData) أو tenantId
+  // Fetch trial info
   useEffect(() => {
     const sid = tenantId || shopId;
     if (!sid) return;
     const fetchShopInfo = async () => {
-      if (!tenantId) return;
+      // Use sid instead of tenantId here to allow fallback
       const { data, error } = await supabase
         .from('shops')
         .select('name, owner_email, status, expiry_date, duration')
-        .eq('id', tenantId)
+        .eq('id', sid)
         .maybeSingle();
       
       if (data && !error) {
@@ -236,7 +236,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     fetchShopInfo();
     const inv = setInterval(fetchShopInfo, 30000);
     return () => clearInterval(inv);
-  }, [tenantId]);
+  }, [tenantId, shopId]);
 
   // Background Data Refresh logic
   const fetchData = useCallback(async (isSilent = false) => {
@@ -466,7 +466,14 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
             <div className="min-w-0">
               <h1 className="text-sm font-black truncate text-white leading-none mb-1">{shopName || 'جاري التحميل...'}</h1>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] text-blue-300 font-bold opacity-80 truncate">{currentUserName}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-blue-300 font-bold opacity-80 truncate">{currentUserName}</span>
+                  {userRole === 'OWNER' && (
+                    <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded-md font-black flex items-center gap-1">
+                      صاحب المحل 👑
+                    </span>
+                  )}
+                </div>
                 <span className="text-[9px] text-slate-500 font-bold truncate opacity-60">{shopOwnerEmail}</span>
               </div>
             </div>
