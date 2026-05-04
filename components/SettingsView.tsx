@@ -26,6 +26,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   const [activeTab, setActiveTab] = useState<'staff' | 'appearance' | 'financial' | 'data'>('staff');
   const [darkMode, setDarkMode] = useState(false);
   const [shopName, setShopName] = useState('');
+  const [maxCashiers, setMaxCashiers] = useState(5);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
 
@@ -58,12 +59,15 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
 
   const fetchTeam = async () => {
     if (!shopId) return;
-    const { data: members } = await supabase.from('profiles').select('id, full_name, role').eq('tenant_id', shopId);
+    const { data: members } = await supabase.from('profiles').select('id, full_name, role, device_id, device_name, last_ip, last_seen, device_wait_until').eq('tenant_id', shopId);
     if (members) setTeamMembers(members);
     const { data: invites } = await supabase.from('shop_invites').select('*').eq('shop_id', shopId).eq('accepted', false);
     if (invites) setPendingInvites(invites);
-    const { data: shop } = await supabase.from('shops').select('name').eq('id', shopId).single();
-    if (shop) setShopName(shop.name);
+    const { data: shop } = await supabase.from('shops').select('name, max_cashiers').eq('id', shopId).single();
+    if (shop) {
+      setShopName(shop.name);
+      setMaxCashiers(shop.max_cashiers || 5);
+    }
   };
 
   const handleSendInvite = async (e: React.FormEvent) => {
@@ -71,6 +75,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     if (!inviteEmail.trim() || !shopId) return;
     if (shopPlan !== 'PRO') {
       alert('⚠️ عذراً، إضافة الموظفين ميزة متاحة فقط في باقة PRO.\nيرجى الترقية لإضافة كاشير أو مدير للمحل.');
+      return;
+    }
+    if ((teamMembers.length + pendingInvites.length) >= maxCashiers) {
+      alert(`⚠️ عذراً، لقد وصلت للحد الأقصى للموظفين (${maxCashiers}).\nيرجى التواصل مع الإدارة لزيادة الحد.`);
       return;
     }
     setInviteLoading(true);
@@ -93,6 +101,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   const handleRemoveMember = async (userId: string, name: string) => {
     if (!confirm(`هل تريد إزالة "${name}" من المحل؟`)) return;
     await supabase.from('profiles').update({ tenant_id: null }).eq('id', userId);
+    fetchTeam();
+  };
+
+  const handleResetMemberDevice = async (userId: string, name: string) => {
+    if (!confirm(`هل تريد تصفير قفل الجهاز لـ "${name}"؟ سيتمكن من الدخول من أي جهاز جديد فوراً.`)) return;
+    await supabase.from('profiles').update({ 
+      device_id: null, 
+      device_wait_until: null,
+      last_seen: null 
+    }).eq('id', userId);
     fetchTeam();
   };
 
@@ -246,7 +264,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
       {activeTab === 'staff' && isOwnerOrManager && (
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 space-y-6 animate-in slide-in-from-bottom duration-500">
           <div className="space-y-4">
-            <p className="text-xs text-slate-400 font-black">الأعضاء الحاليون ({teamMembers.length})</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-slate-400 font-black">الأعضاء الحاليون ({teamMembers.length}/{maxCashiers})</p>
+              {teamMembers.length >= maxCashiers && (
+                <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-lg animate-pulse">تم الوصول للحد الأقصى</span>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {teamMembers.map(m => (
                 <div key={m.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -257,7 +280,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
                       <p className="text-[10px] text-slate-500 font-bold">{m.role === 'OWNER' ? 'صاحب المحل' : 'كاشير'}</p>
                     </div>
                   </div>
-                  {m.role !== 'OWNER' && <button onClick={() => handleRemoveMember(m.id, m.full_name)} className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl"><Trash2 size={16} /></button>}
+                  <div className="flex items-center gap-2">
+                    {m.role !== 'OWNER' && (
+                      <>
+                        <button 
+                          onClick={() => handleResetMemberDevice(m.id, m.full_name)} 
+                          className="p-2 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-all"
+                          title="تصفير قفل الجهاز"
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveMember(m.id, m.full_name)} 
+                          className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                          title="إزالة الموظف"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

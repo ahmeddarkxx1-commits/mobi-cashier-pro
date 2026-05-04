@@ -287,6 +287,34 @@ const App: React.FC = () => {
   }, [session?.user?.id]);
 
 
+  // Heartbeat to keep session alive and prevent unauthorized takeover
+  useEffect(() => {
+    if (!session?.user?.id || isWaitingForDevice || isLocked) return;
+
+    const updateActivity = async () => {
+      const devId = localStorage.getItem('mobi_cashier_device_id');
+      const { data: profile } = await supabase.from('profiles').select('device_id').eq('id', session.user.id).single();
+      
+      // لا تحدث النشاط إلا إذا كنت الجهاز المعتمد
+      if (profile?.device_id === devId) {
+        const myName = getDeviceName();
+        const myIp = await getDeviceIp();
+        await supabase.from('profiles').update({
+          last_seen: new Date().toISOString(),
+          device_name: myName,
+          last_ip: myIp || undefined
+        }).eq('id', session.user.id);
+      }
+    };
+
+    // Update immediately on mount
+    updateActivity();
+
+    // Then every 2 minutes
+    const interval = setInterval(updateActivity, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [session?.user?.id, isWaitingForDevice, isLocked]);
+
   const handleAcceptInvite = async (invite: any) => {
     setAcceptingInvite(invite.id);
     await supabase.from('profiles').update({ tenant_id: invite.shop_id, role: invite.role }).eq('id', session.user.id);
@@ -658,6 +686,13 @@ const App: React.FC = () => {
 
 
   const handleLogout = async () => {
+    if (session?.user?.id) {
+      // تصفير آخر ظهور عند تسجيل الخروج يدوياً للسماح لجهاز آخر بالدخول فوراً (اختياري حسب رغبتك)
+      // سأجعله يصفر last_seen فقط ليظهر للجهاز الآخر أنه "غير متصل" ويبدأ العداد
+      await supabase.from('profiles').update({ 
+        last_seen: null 
+      }).eq('id', session.user.id);
+    }
     await supabase.auth.signOut();
     setSession(null);
   };
@@ -738,15 +773,9 @@ const App: React.FC = () => {
                 </p>
                 <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 mt-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-500">الجهاز:</span>
+                    <span className="text-sm text-slate-500">الجهاز النشط:</span>
                     <span className="font-bold text-blue-400 text-sm" dir="ltr">{activeDeviceName}</span>
                   </div>
-                  {activeDeviceIp && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-500">IP:</span>
-                      <span className="font-mono font-bold text-emerald-400 text-sm" dir="ltr">{activeDeviceIp}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </>
@@ -762,15 +791,9 @@ const App: React.FC = () => {
                 </p>
                 <div className="bg-slate-950/50 p-3 rounded-2xl border border-slate-800 mt-2 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">الجهاز:</span>
+                    <span className="text-xs text-slate-500">الجهاز السابق:</span>
                     <span className="font-bold text-slate-300 text-sm" dir="ltr">{activeDeviceName}</span>
                   </div>
-                  {activeDeviceIp && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500">IP:</span>
-                      <span className="font-mono font-bold text-emerald-400 text-sm" dir="ltr">{activeDeviceIp}</span>
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">

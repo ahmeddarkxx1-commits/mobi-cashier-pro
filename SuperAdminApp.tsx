@@ -90,10 +90,67 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   };
 
   const fetchShopUsers = async (shopId: string) => {
-    const { data } = await supabase.from('profiles').select('id, full_name, role, last_ip, device_id, last_login, device_wait_until').eq('tenant_id', shopId);
+    const { data } = await supabase.from('profiles').select('id, full_name, role, last_ip, device_id, device_name, last_seen, device_wait_until, max_devices').eq('tenant_id', shopId);
     if (data) setShopUsers(prev => ({ ...prev, [shopId]: data }));
     const { data: invites } = await supabase.from('shop_invites').select('*').eq('shop_id', shopId).eq('accepted', false);
     if (invites) setShopInvites(prev => ({ ...prev, [shopId]: invites }));
+  };
+
+  const handleResetDevice = async (userId: string, shopId: string) => {
+    const { error } = await supabase.from('profiles').update({
+      device_id: null,
+      device_wait_until: null,
+      last_seen: null
+    }).eq('id', userId);
+
+    if (!error) {
+      Swal.fire({ icon: 'success', title: 'تم تصفير قفل الجهاز بنجاح', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#0f172a', color: '#fff' });
+      fetchShopUsers(shopId);
+    }
+  };
+
+  const handleUpdateMaxDevices = async (userId: string, shopId: string, currentLimit: number) => {
+    const { value: newLimit } = await Swal.fire({
+      title: 'تحديد حد الأجهزة المسموح بها',
+      input: 'number',
+      inputValue: currentLimit || 1,
+      inputAttributes: { min: '1', max: '10' },
+      showCancelButton: true,
+      confirmButtonText: 'تحديث',
+      cancelButtonText: 'إلغاء',
+      background: '#0f172a',
+      color: '#fff'
+    });
+
+    if (newLimit) {
+      const { error } = await supabase.from('profiles').update({ max_devices: parseInt(newLimit) }).eq('id', userId);
+      if (!error) {
+        Swal.fire({ icon: 'success', title: 'تم تحديث الحد بنجاح', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#0f172a', color: '#fff' });
+        fetchShopUsers(shopId);
+      }
+    }
+  };
+
+  const handleUpdateMaxCashiers = async (shopId: string, currentLimit: number) => {
+    const { value: newLimit } = await Swal.fire({
+      title: 'تحديد حد الموظفين المسموح بهم',
+      input: 'number',
+      inputValue: currentLimit || 5,
+      inputAttributes: { min: '1', max: '50' },
+      showCancelButton: true,
+      confirmButtonText: 'تحديث',
+      cancelButtonText: 'إلغاء',
+      background: '#0f172a',
+      color: '#fff'
+    });
+
+    if (newLimit) {
+      const { error } = await supabase.from('shops').update({ max_cashiers: parseInt(newLimit) }).eq('id', shopId);
+      if (!error) {
+        Swal.fire({ icon: 'success', title: 'تم تحديث الحد بنجاح', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#0f172a', color: '#fff' });
+        fetchTenants();
+      }
+    }
   };
 
   const toggleExpand = (shopId: string) => {
@@ -575,6 +632,12 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                         <div className="flex gap-1 flex-wrap">
                           {getStatusBadge(tenant)}
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/10 text-blue-400">{tenant.plan || 'BASIC'}</span>
+                          <button 
+                            onClick={() => handleUpdateMaxCashiers(tenant.id, tenant.max_cashiers)}
+                            className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 transition-all"
+                          >
+                            👥 حد الموظفين: {tenant.max_cashiers || 5}
+                          </button>
                           {tenant.duration === '3_days_trial' && <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/10 text-purple-400">تجريبي</span>}
                         </div>
                       </div>
@@ -632,38 +695,92 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                           <p className="text-xs text-slate-600 font-bold">لا يوجد مستخدمون مرتبطون</p>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {users.map(u => (
-                              <div key={u.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                                    u.role === 'OWNER' ? 'bg-amber-500/20 text-amber-400' :
-                                    u.role === 'MANAGER' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'
-                                  }`}>
-                                    {u.role === 'OWNER' ? '👑' : u.role === 'MANAGER' ? '🔧' : '💼'}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-black truncate">{u.full_name || 'بدون اسم'}</p>
-                                    <p className="text-[10px] text-slate-500 font-bold">{u.role === 'OWNER' ? 'صاحب المحل' : u.role === 'MANAGER' ? 'مدير' : 'كاشير'}</p>
-                                  </div>
-                                </div>
-                                
-                                <div className="pt-2 border-t border-slate-800 space-y-1">
-                                  <div className="flex items-center justify-between text-[9px] font-bold">
-                                    <span className="text-slate-500">IP:</span>
-                                    <span className="text-blue-400">{u.last_ip || '---'}</span>
-                                  </div>
-                                  <div className="flex items-center justify-between text-[9px] font-bold">
-                                    <span className="text-slate-500">البصمة:</span>
-                                    <span className="text-emerald-400 truncate max-w-[120px]" title={u.device_id}>{u.device_id ? u.device_id : '---'}</span>
-                                  </div>
-                                  {u.device_wait_until && new Date(u.device_wait_until) > new Date() && (
-                                    <div className="flex items-center gap-1 mt-1 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded text-[8px] animate-pulse">
-                                      <Clock size={8} /> في الانتظار (تبديل جهاز)
+                            {users.map(u => {
+                              const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+                              const isOnline = u.last_seen && new Date(u.last_seen) > threeMinutesAgo;
+                              
+                              return (
+                                <div key={u.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 relative group overflow-hidden">
+                                  {/* Animated background on hover */}
+                                  <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/[0.02] transition-colors duration-500"></div>
+                                  
+                                  <div className="flex items-center gap-3 relative z-10">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${
+                                      u.role === 'OWNER' ? 'bg-amber-500/20 text-amber-400' :
+                                      u.role === 'MANAGER' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-800 text-slate-400'
+                                    }`}>
+                                      {u.role === 'OWNER' ? '👑' : u.role === 'MANAGER' ? '🔧' : '💼'}
                                     </div>
-                                  )}
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-black truncate">{u.full_name || 'بدون اسم'}</p>
+                                        <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-700'}`}></div>
+                                      </div>
+                                      <p className="text-[10px] text-slate-500 font-bold">{u.role === 'OWNER' ? 'صاحب المحل' : u.role === 'MANAGER' ? 'مدير' : 'كاشير'}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="pt-3 border-t border-slate-800 space-y-2 relative z-10">
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="bg-slate-950/50 p-2 rounded-xl border border-slate-800/50">
+                                        <p className="text-[8px] text-slate-500 font-black mb-1 uppercase tracking-wider">الجهاز المسجل</p>
+                                        <p className="text-[10px] text-slate-300 font-bold truncate" title={u.device_name}>{u.device_name || 'غير معروف'}</p>
+                                      </div>
+                                      <div className="bg-slate-950/50 p-2 rounded-xl border border-slate-800/50">
+                                        <p className="text-[8px] text-slate-500 font-black mb-1 uppercase tracking-wider">عنوان IP</p>
+                                        <p className="text-[10px] text-emerald-400 font-mono font-bold">{u.last_ip || '---.---.---'}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between px-1">
+                                      <div className="flex flex-col">
+                                        <p className="text-[8px] text-slate-500 font-black uppercase">حد الأجهزة</p>
+                                        <p className="text-[10px] text-blue-400 font-black">{u.max_devices || 1} جهاز</p>
+                                      </div>
+                                      <div className="flex flex-col text-left">
+                                        <p className="text-[8px] text-slate-500 font-black uppercase text-left">آخر ظهور</p>
+                                        <p className="text-[10px] text-slate-400 font-bold">
+                                          {u.last_seen ? new Date(u.last_seen).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : 'أبداً'}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {u.device_wait_until && new Date(u.device_wait_until) > new Date() && (
+                                      <div className="flex items-center gap-2 bg-amber-500/10 text-amber-500 px-3 py-1.5 rounded-xl text-[9px] font-black animate-pulse border border-amber-500/20">
+                                        <Clock size={12} /> محجوز في غرفة الانتظار
+                                      </div>
+                                    )}
+
+                                    <div className="grid grid-cols-3 gap-2 pt-1">
+                                      <button 
+                                        onClick={() => handleUpdateMaxDevices(u.id, tenant.id, u.max_devices)}
+                                        className="flex items-center justify-center gap-1.5 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-xl transition-all border border-blue-500/20 group/btn"
+                                        title="تغيير عدد الأجهزة"
+                                      >
+                                        <ShieldAlert size={14} className="group-hover/btn:scale-110 transition-transform" />
+                                        <span className="text-[9px] font-black">الحد</span>
+                                      </button>
+                                      <button 
+                                        onClick={() => handleResetDevice(u.id, tenant.id)}
+                                        className="flex items-center justify-center gap-1.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-xl transition-all border border-amber-500/20 group/btn"
+                                        title="تصفير قفل الجهاز"
+                                      >
+                                        <RefreshCw size={14} className="group-hover/btn:rotate-180 transition-transform duration-500" />
+                                        <span className="text-[9px] font-black">تصفير</span>
+                                      </button>
+                                      <button 
+                                        onClick={() => handleRemoveUser(u.id, tenant.id)}
+                                        className="flex items-center justify-center gap-1.5 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/20 group/btn"
+                                        title="حذف المستخدم"
+                                      >
+                                        <Trash2 size={14} className="group-hover/btn:shake transition-all" />
+                                        <span className="text-[9px] font-black">حذف</span>
+                                      </button>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
