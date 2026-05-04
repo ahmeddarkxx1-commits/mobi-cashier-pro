@@ -51,7 +51,7 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, fetchTenants)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchTenants)
       .subscribe();
-    const interval = setInterval(fetchTenants, 15000);
+    const interval = setInterval(() => fetchTenants(true), 15000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, []);
 
@@ -82,8 +82,8 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   };
 
 
-  const fetchTenants = async () => {
-    setLoading(true);
+  const fetchTenants = async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     const { data } = await supabase.from('shops').select('*').order('created_at', { ascending: false });
     if (data) setTenants(data);
     setLoading(false);
