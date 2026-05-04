@@ -303,6 +303,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
                 </div>
               ))}
             </div>
+
+            {/* عرض الدعوات المعلقة */}
+            {pendingInvites.length > 0 && (
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <p className="text-xs text-amber-500 font-black flex items-center gap-2">الدعوات المرسلة وفي انتظار التسجيل ({pendingInvites.length})</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {pendingInvites.map(invite => (
+                    <div key={invite.id} className="flex items-center justify-between bg-amber-50/50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl flex items-center justify-center animate-pulse">✉️</div>
+                        <div>
+                          <p className="font-black text-sm text-slate-900 dark:text-white" dir="ltr">{invite.invited_email}</p>
+                          <p className="text-[10px] text-amber-600 font-bold">{invite.role === 'MANAGER' ? 'مدير فرع' : 'كاشير موظف'}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleCancelInvite(invite.id)} 
+                        className="p-2 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
+                        title="إلغاء الدعوة"
+                      >
+                        <XCircle size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={`pt-6 border-t border-slate-100 dark:border-slate-800 ${shopPlan !== 'PRO' ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
