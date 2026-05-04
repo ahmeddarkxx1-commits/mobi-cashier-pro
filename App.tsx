@@ -555,52 +555,78 @@ const App: React.FC = () => {
         }
         // 2. جهاز مختلف عن المعتمد
         else if (userDevId && devId && userDevId !== devId) {
-          const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-          const isAuthorizedOnline = lastSeen && new Date(lastSeen) > threeMinutesAgo;
+          // استثناء: السوبر أدمن يمكنه الدخول من أي جهاز مع تحديث البيانات
+          if (profile.role === 'SUPER_ADMIN') {
+            const myName = getDeviceName();
+            const myIp = await getDeviceIp();
+            await supabase.from('profiles').update({
+              device_id: devId,
+              device_name: myName,
+              last_ip: myIp || undefined,
+              last_seen: new Date().toISOString(),
+              device_wait_until: null
+            }).eq('id', userId);
 
-          if (isAuthorizedOnline) {
-            setActiveDeviceName(authorizedDeviceName);
-            setActiveDeviceIp(authorizedDeviceIp);
-            setIsDeviceActivelyInUse(true);
-            setIsWaitingForDevice(true);
-            setWaitTimeLeft(0);
-            setLoading(false);
-            return;
-          } else if (waitUntil) {
-            const now = new Date().getTime();
-            const waitTime = new Date(waitUntil).getTime();
-            if (now < waitTime) {
+            // إشعار للأدمن بأنه تم تجاوز القفل
+            Swal.fire({
+              icon: 'info',
+              title: 'تنبيه الأدمن',
+              text: `تم السماح بالدخول لجهاز الأدمن. كان هناك نشاط سابق من جهاز: ${authorizedDeviceName} (${authorizedDeviceIp})`,
+              toast: true,
+              position: 'top-end',
+              showConfirmButton: false,
+              timer: 5000,
+              background: '#0f172a',
+              color: '#fff'
+            });
+          } else {
+            const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+            const isAuthorizedOnline = lastSeen && new Date(lastSeen) > threeMinutesAgo;
+
+            if (isAuthorizedOnline) {
+              setActiveDeviceName(authorizedDeviceName);
+              setActiveDeviceIp(authorizedDeviceIp);
+              setIsDeviceActivelyInUse(true);
+              setIsWaitingForDevice(true);
+              setWaitTimeLeft(0);
+              setLoading(false);
+              return;
+            } else if (waitUntil) {
+              const now = new Date().getTime();
+              const waitTime = new Date(waitUntil).getTime();
+              if (now < waitTime) {
+                setActiveDeviceName(authorizedDeviceName);
+                setActiveDeviceIp(authorizedDeviceIp);
+                setIsDeviceActivelyInUse(false);
+                setIsWaitingForDevice(true);
+                setWaitTimeLeft(Math.ceil((waitTime - now) / 1000));
+                setLoading(false);
+                return;
+              } else {
+                const myName = getDeviceName();
+                const myIp = await getDeviceIp();
+                await supabase.from('profiles').update({
+                  device_id: devId,
+                  device_wait_until: null,
+                  device_name: myName,
+                  last_ip: myIp || undefined,
+                  last_seen: new Date().toISOString()
+                }).eq('id', userId);
+              }
+            } else {
+              const waitDate = new Date();
+              waitDate.setHours(waitDate.getHours() + 2);
+              await supabase.from('profiles').update({
+                device_wait_until: waitDate.toISOString()
+              }).eq('id', userId);
               setActiveDeviceName(authorizedDeviceName);
               setActiveDeviceIp(authorizedDeviceIp);
               setIsDeviceActivelyInUse(false);
               setIsWaitingForDevice(true);
-              setWaitTimeLeft(Math.ceil((waitTime - now) / 1000));
+              setWaitTimeLeft(2 * 60 * 60);
               setLoading(false);
               return;
-            } else {
-              const myName = getDeviceName();
-              const myIp = await getDeviceIp();
-              await supabase.from('profiles').update({
-                device_id: devId,
-                device_wait_until: null,
-                device_name: myName,
-                last_ip: myIp || undefined,
-                last_seen: new Date().toISOString()
-              }).eq('id', userId);
             }
-          } else {
-            const waitDate = new Date();
-            waitDate.setHours(waitDate.getHours() + 2);
-            await supabase.from('profiles').update({
-              device_wait_until: waitDate.toISOString()
-            }).eq('id', userId);
-            setActiveDeviceName(authorizedDeviceName);
-            setActiveDeviceIp(authorizedDeviceIp);
-            setIsDeviceActivelyInUse(false);
-            setIsWaitingForDevice(true);
-            setWaitTimeLeft(2 * 60 * 60);
-            setLoading(false);
-            return;
           }
         }
         // 3. أول دخول - لا يوجد device_id مسجل
@@ -811,14 +837,24 @@ const App: React.FC = () => {
             </>
           )}
 
-          <div className="pt-4 space-y-4">
+          <div className="pt-4 space-y-3">
             <button 
               onClick={handleLogout}
               className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black rounded-2xl transition-all flex items-center justify-center gap-2"
             >
-              <LogOut size={20} /> إلغاء والمغادرة
+              <LogOut size={20} /> تسجيل الخروج والمغادرة
             </button>
-            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+
+            <a 
+              href="https://wa.me/201152628515?text=طلب%20فك%20قفل%20الجهاز%20وتخطي%20الانتظار"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-4 bg-green-600/10 hover:bg-green-600/20 text-green-500 font-black rounded-2xl transition-all flex items-center justify-center gap-2 border border-green-500/20"
+            >
+              <MessageCircle size={20} /> التواصل مع الدعم الفني
+            </a>
+
+            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center justify-center gap-2 pt-2">
               <ShieldCheck size={12} /> SECURE DEVICE SWAP PROTOCOL
             </p>
           </div>

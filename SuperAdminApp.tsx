@@ -746,8 +746,17 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
                                     </div>
 
                                     {u.device_wait_until && new Date(u.device_wait_until) > new Date() && (
-                                      <div className="flex items-center gap-2 bg-amber-500/10 text-amber-500 px-3 py-1.5 rounded-xl text-[9px] font-black animate-pulse border border-amber-500/20">
-                                        <Clock size={12} /> محجوز في غرفة الانتظار
+                                      <div className="flex flex-col gap-2 bg-amber-500/10 text-amber-500 p-3 rounded-xl border border-amber-500/20">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[9px] font-black flex items-center gap-1"><Clock size={12} /> في غرفة الانتظار</span>
+                                          <span className="text-[9px] font-black">{Math.ceil((new Date(u.device_wait_until).getTime() - new Date().getTime()) / 60000)} دقيقة متبقية</span>
+                                        </div>
+                                        <button 
+                                          onClick={() => handleResetDevice(u.id, u.full_name)}
+                                          className="w-full py-1.5 bg-amber-500 text-white rounded-lg text-[10px] font-black shadow-lg shadow-amber-500/20 hover:scale-105 transition-all"
+                                        >
+                                          الموافقة على الجهاز الجديد (تخطي)
+                                        </button>
                                       </div>
                                     )}
 
