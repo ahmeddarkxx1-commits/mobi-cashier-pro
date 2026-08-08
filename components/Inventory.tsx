@@ -100,7 +100,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               line-height: 1.2;
             }
             .product-name {
-              font-size: 10px;
+              font-size: 9.5px;
               font-weight: 700;
               text-align: center;
               width: 100%;
