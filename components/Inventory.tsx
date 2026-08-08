@@ -3,7 +3,7 @@ import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2
 import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface InventoryProps {
   products: Product[];
@@ -54,7 +54,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   });
 
   const [isFormCameraOpen, setIsFormCameraOpen] = useState(false);
-  const formScannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const formQrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const CATEGORY_ICONS: Record<string, string> = {
     phone: '📱',
@@ -330,55 +330,66 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   useEffect(() => {
     if (!isFormCameraOpen) return;
 
-    const formatsToSupport = [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.QR_CODE
-    ];
+    const timer = setTimeout(() => {
+      try {
+        const html5QrCode = new Html5Qrcode("form-reader");
+        formQrCodeRef.current = html5QrCode;
 
-    const scanner = new Html5QrcodeScanner(
-      "form-reader",
-      { 
-        fps: 15, 
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [0], // Camera scan type only
-        formatsToSupport: formatsToSupport,
-        qrbox: (width, height) => {
-          return { width: Math.min(width * 0.8, 300), height: 120 };
-        },
-        videoConstraints: {
-          facingMode: "environment"
-        }
-      },
-      false
-    );
-    formScannerRef.current = scanner;
+        const formatsToSupport = [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ];
 
-    const onScanSuccess = (decodedText: string) => {
-      playBeepSound();
-      setNewProduct(prev => ({ ...prev, barcode: decodedText }));
-      toast.success(`تم قراءة الباركود: ${decodedText}`);
-      
-      scanner.clear().then(() => {
-        setIsFormCameraOpen(false);
-      }).catch(err => {
-        console.error("Failed to clear form scanner on success", err);
-        setIsFormCameraOpen(false);
-      });
-    };
+        const onScanSuccess = (decodedText: string) => {
+          playBeepSound();
+          setNewProduct(prev => ({ ...prev, barcode: decodedText }));
+          toast.success(`تم قراءة الباركود: ${decodedText}`);
+          
+          if (formQrCodeRef.current && formQrCodeRef.current.isScanning) {
+            formQrCodeRef.current.stop().then(() => {
+              setIsFormCameraOpen(false);
+            }).catch(err => {
+              console.error("Failed to stop form scanner on success", err);
+              setIsFormCameraOpen(false);
+            });
+          } else {
+            setIsFormCameraOpen(false);
+          }
+        };
 
-    scanner.render(onScanSuccess, () => {});
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { 
+            fps: 15, 
+            formatsToSupport: formatsToSupport,
+            qrbox: (width, height) => {
+              return { width: Math.min(width * 0.8, 300), height: 120 };
+            }
+          },
+          onScanSuccess,
+          () => {}
+        ).catch(err => {
+          console.error("Error starting form html5QrCode:", err);
+          toast.error("لم نتمكن من تشغيل الكاميرا تلقائياً. تأكد من إعطاء الصلاحية.");
+        });
+      } catch (e) {
+        console.error("Form scanner setup failed:", e);
+      }
+    }, 150);
 
     return () => {
-      if (formScannerRef.current) {
-        formScannerRef.current.clear().catch(err => {
-          console.error("Cleanup error for form scanner", err);
-        });
-        formScannerRef.current = null;
+      clearTimeout(timer);
+      if (formQrCodeRef.current) {
+        const instance = formQrCodeRef.current;
+        if (instance.isScanning) {
+          instance.stop().catch(err => console.error("Form cleanup stop failed", err));
+        }
+        formQrCodeRef.current = null;
       }
     };
   }, [isFormCameraOpen]);

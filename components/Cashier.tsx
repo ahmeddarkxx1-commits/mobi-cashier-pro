@@ -9,7 +9,7 @@ import BalanceRecharge from './BalanceRecharge';
 import { updateProductStock, createDebt } from '../supabaseHelpers';
 import MissingGoods from './MissingGoods';
 import { AlertCircle } from 'lucide-react';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface CashierProps {
   products: Product[];
@@ -68,7 +68,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   const [completedInvoice, setCompletedInvoice] = useState<any>(null);
 
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   const [customCategories, setCustomCategories] = useState<string[]>(['phone', 'charger', 'cable', 'accessory']);
   const [partCategories, setPartCategories] = useState<string[]>(['part', 'شاشات', 'فلاتات', 'بطاريات']);
@@ -352,60 +352,71 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   useEffect(() => {
     if (!isCameraScannerOpen) return;
 
-    const formatsToSupport = [
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.QR_CODE
-    ];
+    const timer = setTimeout(() => {
+      try {
+        const html5QrCode = new Html5Qrcode("reader");
+        html5QrCodeRef.current = html5QrCode;
 
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      { 
-        fps: 15, 
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [0], // Camera scan type only
-        formatsToSupport: formatsToSupport,
-        qrbox: (width, height) => {
-          return { width: Math.min(width * 0.8, 300), height: 120 };
-        },
-        videoConstraints: {
-          facingMode: "environment"
-        }
-      },
-      false
-    );
-    scannerRef.current = scanner;
+        const formatsToSupport = [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ];
 
-    const onScanSuccess = (decodedText: string) => {
-      playBeepSound();
-      const matched = products.find(p => p.id === decodedText || p.name.includes(decodedText));
-      if (matched) {
-        addToCart(matched);
-        toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
-      } else {
-        toast.error(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
+        const onScanSuccess = (decodedText: string) => {
+          playBeepSound();
+          const matched = products.find(p => p.id === decodedText || p.name.includes(decodedText));
+          if (matched) {
+            addToCart(matched);
+            toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
+          } else {
+            toast.error(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
+          }
+          
+          if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().then(() => {
+              setIsCameraScannerOpen(false);
+            }).catch(err => {
+              console.error("Failed to stop scanner on success", err);
+              setIsCameraScannerOpen(false);
+            });
+          } else {
+            setIsCameraScannerOpen(false);
+          }
+        };
+
+        html5QrCode.start(
+          { facingMode: "environment" },
+          { 
+            fps: 15,
+            formatsToSupport: formatsToSupport,
+            qrbox: (width, height) => {
+              return { width: Math.min(width * 0.8, 300), height: 120 };
+            }
+          },
+          onScanSuccess,
+          () => {}
+        ).catch(err => {
+          console.error("Error starting html5QrCode:", err);
+          toast.error("لم نتمكن من تشغيل الكاميرا تلقائياً. تأكد من إعطاء الصلاحية.");
+        });
+      } catch (e) {
+        console.error("Scanner setup failed:", e);
       }
-      
-      scanner.clear().then(() => {
-        setIsCameraScannerOpen(false);
-      }).catch(err => {
-        console.error("Failed to clear scanner on success", err);
-        setIsCameraScannerOpen(false);
-      });
-    };
-
-    scanner.render(onScanSuccess, () => {});
+    }, 150);
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(err => {
-          console.error("Cleanup error for html5-qrcode", err);
-        });
-        scannerRef.current = null;
+      clearTimeout(timer);
+      if (html5QrCodeRef.current) {
+        const instance = html5QrCodeRef.current;
+        if (instance.isScanning) {
+          instance.stop().catch(err => console.error("Cleanup stop failed", err));
+        }
+        html5QrCodeRef.current = null;
       }
     };
   }, [isCameraScannerOpen, products]);
