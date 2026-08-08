@@ -66,85 +66,65 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
     printWindow.document.write(`
       <html>
         <head>
-          <title>طباعة باركود - ${displayName}</title>
+          <title>باركود - ${displayName}</title>
           <style>
             @page {
               size: 38mm 25mm;
               margin: 0 !important;
             }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
             html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-              height: 100% !important;
-              display: flex !important;
-              justify-content: center !important;
-              align-items: center !important;
+              width: 38mm;
+              height: 25mm;
               overflow: hidden;
               background: white;
               color: black;
-              box-sizing: border-box;
             }
             .label-wrapper {
               width: 38mm;
-              height: 23mm;
+              height: 25mm;
               display: flex;
               flex-direction: column;
               align-items: center;
-              justify-content: center;
-              overflow: hidden;
-              box-sizing: border-box;
-              padding: 1px 1px 1px 8mm;
-              page-break-inside: avoid !important;
-              page-break-after: avoid !important;
-              break-after: avoid !important;
+              justify-content: flex-start;
+              padding: 1mm 1mm 0 1mm;
             }
             .store-name {
-              font-size: 20px;
+              font-size: 13px;
               font-weight: 900;
-              line-height: 1.1;
-              margin: 0 0 1px 0;
-              padding: 0;
+              text-align: center;
+              width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              width: 100%;
-              text-transform: uppercase;
-              text-align: center;
+              line-height: 1.2;
             }
             .product-name {
-              font-size: 10px;
-              font-weight: 900;
-              line-height: 1.1;
-              margin: 1px 0;
-              padding: 0;
+              font-size: 8px;
+              font-weight: 700;
+              text-align: center;
+              width: 100%;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              width: 100%;
-              text-align: center;
+              line-height: 1.2;
             }
             .barcode-container {
               width: 100%;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              margin: 0;
-              padding: 0;
               flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
             }
             #barcode-elem {
-              width: 100% !important;
-              display: block;
-              margin: 0 auto;
+              width: 100%;
             }
             .price {
-              font-size: 10px;
+              font-size: 9px;
               font-weight: 900;
-              line-height: 1.1;
-              margin: 1px 0 0 0;
-              padding: 0;
               text-align: center;
+              width: 100%;
+              padding-bottom: 1mm;
             }
           </style>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
@@ -167,12 +147,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
                 else if (/^\d{8}$/.test(code)) fmt = "EAN8";
                 JsBarcode("#barcode-elem", code, {
                   format: fmt,
-                  width: 2,
-                  height: 55,
+                  width: 1.5,
+                  height: 30,
                   displayValue: true,
-                  fontSize: 26,
+                  fontSize: 20,
                   fontOptions: "bold",
-                  margin: 2
+                  margin: 0
                 });
                 setTimeout(() => {
                   window.print();
