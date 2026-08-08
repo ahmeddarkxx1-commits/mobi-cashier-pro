@@ -12,6 +12,30 @@ interface InventoryProps {
 }
 
 const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) => {
+  const playBeepSound = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1000, context.currentTime); // 1000Hz standard scanner pitch
+      
+      gain.gain.setValueAtTime(0.3, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15); // Smooth decay
+      
+      osc.connect(gain);
+      gain.connect(context.destination);
+      
+      osc.start();
+      osc.stop(context.currentTime + 0.15);
+    } catch (e) {
+      console.error("Audio beep failed", e);
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<Product['category'] | 'all'>('all');
   const [isAdding, setIsAdding] = useState(false);
@@ -335,6 +359,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     formScannerRef.current = scanner;
 
     const onScanSuccess = (decodedText: string) => {
+      playBeepSound();
       setNewProduct(prev => ({ ...prev, barcode: decodedText }));
       toast.success(`تم قراءة الباركود: ${decodedText}`);
       

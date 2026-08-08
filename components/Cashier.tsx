@@ -28,6 +28,30 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     return fullName.split(' - Barcode:')[0].split(' - IMEI:')[0].trim();
   };
 
+  const playBeepSound = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const context = new AudioContextClass();
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1000, context.currentTime); // 1000Hz standard scanner pitch
+      
+      gain.gain.setValueAtTime(0.3, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.15); // Smooth decay
+      
+      osc.connect(gain);
+      gain.connect(context.destination);
+      
+      osc.start();
+      osc.stop(context.currentTime + 0.15);
+    } catch (e) {
+      console.error("Audio beep failed", e);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'goods' | 'transfers' | 'recharge'>('goods');
   const [selectedCategory, setSelectedCategory] = useState<Product['category'] | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -301,6 +325,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           e.stopPropagation();
           const barcode = barcodeBuffer.trim();
           console.log('Scanned barcode:', barcode);
+          playBeepSound();
           
           if (isSearchInput && searchInputRef.current) {
             searchInputRef.current.value = '';
@@ -311,15 +336,6 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           if (matched) {
             addToCart(matched);
             toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
-            try {
-              const context = new AudioContext();
-              const osc = context.createOscillator();
-              osc.type = 'sine';
-              osc.frequency.setValueAtTime(800, context.currentTime);
-              osc.connect(context.destination);
-              osc.start();
-              osc.stop(context.currentTime + 0.1);
-            } catch (ev) {}
           } else {
             toast.error(`لم يتم العثور على صنف بالباركود: ${barcode}`);
           }
@@ -365,19 +381,11 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     scannerRef.current = scanner;
 
     const onScanSuccess = (decodedText: string) => {
+      playBeepSound();
       const matched = products.find(p => p.id === decodedText || p.name.includes(decodedText));
       if (matched) {
         addToCart(matched);
         toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
-        try {
-          const context = new AudioContext();
-          const osc = context.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(800, context.currentTime);
-          osc.connect(context.destination);
-          osc.start();
-          osc.stop(context.currentTime + 0.1);
-        } catch (e) {}
       } else {
         toast.error(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
       }
