@@ -16,6 +16,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [fullName, setFullName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
 
+  const [showDbConfig, setShowDbConfig] = useState(false);
+  const [dbUrl, setDbUrl] = useState(localStorage.getItem('CUSTOM_SUPABASE_URL') || '');
+  const [dbKey, setDbKey] = useState(localStorage.getItem('CUSTOM_SUPABASE_ANON_KEY') || '');
+
+  const handleSaveDbConfig = () => {
+    if (!dbUrl || !dbKey) {
+      alert('يرجى ملء جميع الحقول المطلوبة.');
+      return;
+    }
+    localStorage.setItem('CUSTOM_SUPABASE_URL', dbUrl.trim());
+    localStorage.setItem('CUSTOM_SUPABASE_ANON_KEY', dbKey.trim());
+    alert('تم حفظ البيانات بنجاح، سيتم إعادة تحميل الصفحة للتوصيل بقاعدة البيانات الجديدة.');
+    window.location.reload();
+  };
+
+  const handleResetDbConfig = () => {
+    localStorage.removeItem('CUSTOM_SUPABASE_URL');
+    localStorage.removeItem('CUSTOM_SUPABASE_ANON_KEY');
+    alert('تم حذف الإعدادات المخصصة والرجوع لقاعدة البيانات الافتراضية.');
+    window.location.reload();
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -216,6 +238,66 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               </button>
             </p>
           </div>
+        </div>
+
+        {/* Cloud Database Settings */}
+        <div className="mt-4 bg-slate-900/50 backdrop-blur-2xl border border-slate-800/80 rounded-[2rem] p-6 shadow-xl relative z-10">
+          <button
+            type="button"
+            onClick={() => setShowDbConfig(!showDbConfig)}
+            className="w-full flex items-center justify-between font-black text-xs text-slate-400 hover:text-slate-300 transition-colors"
+          >
+            <span className="flex items-center gap-2">⚙️ إعدادات الاتصال السحابي (Supabase)</span>
+            <span>{showDbConfig ? '▲' : '▼'}</span>
+          </button>
+          
+          {showDbConfig && (
+            <div className="mt-4 space-y-4 animate-in fade-in duration-300">
+              <p className="text-[10px] text-slate-500 font-bold leading-relaxed text-right">
+                إذا قمت بإنشاء قاعدة بيانات Supabase خاصة بك، يمكنك إدخال رابط المشروع والمفتاح هنا لربط الموقع بها مباشرة.
+              </p>
+              <div className="space-y-1 text-right">
+                <label className="text-[10px] font-black text-slate-400">رابط المشروع (Project URL)</label>
+                <input
+                  type="text"
+                  placeholder="https://your-project.supabase.co"
+                  className="w-full bg-slate-950/60 border border-slate-850 p-3 rounded-xl text-xs font-bold text-slate-200 outline-none focus:border-emerald-500 text-left"
+                  dir="ltr"
+                  value={dbUrl}
+                  onChange={e => setDbUrl(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1 text-right">
+                <label className="text-[10px] font-black text-slate-400">مفتاح الأمان (Anon Key)</label>
+                <input
+                  type="text"
+                  placeholder="eyJhbGciOi..."
+                  className="w-full bg-slate-950/60 border border-slate-850 p-3 rounded-xl text-xs font-bold text-slate-200 outline-none focus:border-emerald-500 text-left"
+                  dir="ltr"
+                  value={dbKey}
+                  onChange={e => setDbKey(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveDbConfig}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 rounded-xl text-xs transition-all"
+                >
+                  حفظ وتوصيل
+                </button>
+                {(localStorage.getItem('CUSTOM_SUPABASE_URL') || localStorage.getItem('CUSTOM_SUPABASE_ANON_KEY')) && (
+                  <button
+                    type="button"
+                    onClick={handleResetDbConfig}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-black px-4 py-3 rounded-xl text-xs transition-all border border-red-500/20"
+                  >
+                    حذف
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer info */}

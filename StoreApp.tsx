@@ -618,7 +618,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 no-scrollbar">
           <div className="max-w-6xl mx-auto pb-20 lg:pb-0">
-            {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} />}
+            {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
             {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} />}
             {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} />}
             {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} />}

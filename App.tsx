@@ -136,6 +136,9 @@ const App: React.FC = () => {
       } else {
         setLoading(false);
       }
+    }).catch(err => {
+      console.error('Supabase session loading failed:', err);
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -174,14 +177,18 @@ const App: React.FC = () => {
   }, [isWaitingForDevice, waitTimeLeft]);
 
   useEffect(() => {
-    if (!session?.user?.email) return;
+    if (!session?.user?.email || session.user.id === 'demo-user') return;
     const checkInvites = async () => {
-      const { data } = await supabase
-        .from('shop_invites')
-        .select('id, role, shop_id, shops(name)')
-        .eq('invited_email', session.user.email.toLowerCase())
-        .eq('accepted', false);
-      if (data && data.length > 0) setPendingInvites(data);
+      try {
+        const { data } = await supabase
+          .from('shop_invites')
+          .select('id, role, shop_id, shops(name)')
+          .eq('invited_email', session.user.email.toLowerCase())
+          .eq('accepted', false);
+        if (data && data.length > 0) setPendingInvites(data);
+      } catch (err) {
+        console.warn('Check invites failed (offline mode):', err);
+      }
     };
     checkInvites();
     const inv = setInterval(checkInvites, 15000);
@@ -190,30 +197,37 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const fetchGlobalData = async () => {
-      const { data: config } = await supabase.from('app_config').select('*').limit(1).maybeSingle();
-      if (config) {
-        setIsMaintenance(config.maintenance_mode);
-        setMaintenanceMessage(config.maintenance_message);
-        setAppConfig(prev => ({
-          ...prev,
-          globalMessage: config.global_message || ''
-        }));
+      try {
+        const { data: config } = await supabase.from('app_config').select('*').limit(1).maybeSingle();
+        if (config) {
+          setIsMaintenance(config.maintenance_mode);
+          setMaintenanceMessage(config.maintenance_message);
+          setAppConfig(prev => ({
+            ...prev,
+            globalMessage: config.global_message || ''
+          }));
+        }
+        const { data: notify } = await supabase.from('app_notifications').select('*').eq('is_active', true).order('created_at', { ascending: false });
+        if (notify) setGlobalNotifications(notify);
+      } catch (err) {
+        console.warn('Could not fetch global app config (offline mode):', err);
       }
-      const { data: notify } = await supabase.from('app_notifications').select('*').eq('is_active', true).order('created_at', { ascending: false });
-      if (notify) setGlobalNotifications(notify);
     };
 
     fetchGlobalData();
-    const configSub = supabase.channel('global_config')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_config' }, fetchGlobalData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_notifications' }, fetchGlobalData)
-      .subscribe();
+    // Only subscribe to channels if we are not running a demo user
+    if (session?.user?.id !== 'demo-user') {
+      const configSub = supabase.channel('global_config')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_config' }, fetchGlobalData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_notifications' }, fetchGlobalData)
+        .subscribe();
 
-    return () => { supabase.removeChannel(configSub); };
-  }, []);
+      return () => { supabase.removeChannel(configSub); };
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.id || session.user.id === 'demo-user') return;
 
     const profileSub = supabase.channel(`profile_security_${session.user.id}`)
       .on('postgres_changes', { 
@@ -267,7 +281,7 @@ const App: React.FC = () => {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (!session?.user?.id || isWaitingForDevice || isLocked) return;
+    if (!session?.user?.id || session.user.id === 'demo-user' || isWaitingForDevice || isLocked) return;
     const updateActivity = async () => {
       const devId = localStorage.getItem('mobi_cashier_device_id');
       const { data: profile } = await supabase.from('profiles').select('device_id').eq('id', session.user.id).single();
@@ -379,6 +393,13 @@ const App: React.FC = () => {
   }, [session, tenantId, userRole]);
 
   const fetchUserProfile = async (userId: string, isSilent = false) => {
+    if (userId === 'demo-user') {
+      setUserRole('OWNER');
+      setIsWaitingForDevice(false);
+      setIsLocked(false);
+      setLoading(false);
+      return;
+    }
     if (!isSilent) setLoading(true);
     try {
       const { data: profile, error } = await supabase
@@ -470,11 +491,19 @@ const App: React.FC = () => {
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setUserRole('OWNER');
-      setIsLocked(true);
-      setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
+      const msg = err.message || '';
+      if (msg.includes('fetch') || msg.includes('network') || msg.includes('Failed') || err.status === 0) {
+        // Safe connection error fallback
+        setUserRole('OWNER');
+        setIsLocked(false);
+        setTenantId('demo-shop');
+      } else {
+        setUserRole('OWNER');
+        setIsLocked(true);
+        setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
+      }
     } finally {
       setLoading(false);
     }

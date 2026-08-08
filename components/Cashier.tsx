@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, X, Smartphone, ArrowRightLeft, Zap, Banknote, Laptop, Headset, UserPlus, Package } from 'lucide-react';
@@ -17,10 +17,11 @@ interface CashierProps {
   transferSettings: TransferSetting[];
   isLimited?: boolean;
   shopId: string | null;
+  appName?: string;
 }
 
 
-const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction, transferSettings, isLimited = false, shopId }) => {
+const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction, transferSettings, isLimited = false, shopId, appName }) => {
   const [activeTab, setActiveTab] = useState<'goods' | 'transfers' | 'recharge'>('goods');
   const [selectedCategory, setSelectedCategory] = useState<Product['category'] | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,11 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   const [debtCustomerName, setDebtCustomerName] = useState('');
   const [debtCustomerPhone, setDebtCustomerPhone] = useState('');
   const [debtPaidAmount, setDebtPaidAmount] = useState<number>(0);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [completedInvoice, setCompletedInvoice] = useState<any>(null);
 
   const [customCategories, setCustomCategories] = useState<string[]>(['phone', 'charger', 'cable', 'accessory']);
   const [partCategories, setPartCategories] = useState<string[]>(['part', 'شاشات', 'فلاتات', 'بطاريات']);
@@ -192,6 +198,19 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
       });
     }
 
+    // Save invoice details for printing/sharing
+    const invoiceDetails = {
+      items: cart.map(i => ({ name: i.product.name, qty: i.qty, price: i.product.price })),
+      total,
+      paymentMedium,
+      customerName: debtCustomerName,
+      customerPhone: debtCustomerPhone,
+      date: new Date().toLocaleString('ar-EG'),
+      shopName: appName || 'مدير محل الموبايلات الذكي'
+    };
+    setCompletedInvoice(invoiceDetails);
+    setShowInvoiceModal(true);
+
     // Update local and DB stock
     for (const item of cart) {
       const newStock = item.product.stock - item.qty;
@@ -216,6 +235,205 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
       duration: 4000,
       icon: '💰'
     });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Focus search box on F2 or /
+      if (e.key === 'F2' || (e.key === '/' && document.activeElement?.tagName !== 'INPUT')) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+      // Open/Toggle cart drawer on Alt + C
+      if (e.altKey && e.key === 'c') {
+        e.preventDefault();
+        setIsCartOpen(prev => !prev);
+      }
+      // Confirm payment when pressing Ctrl+Enter or Alt+Enter
+      if ((e.ctrlKey || e.altKey) && e.key === 'Enter') {
+        if (cart.length > 0) {
+          e.preventDefault();
+          handleCheckout();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, debtCustomerName, debtCustomerPhone, debtPaidAmount, paymentMedium, shopId]);
+
+  // Barcode Scanner Listener
+  useEffect(() => {
+    let barcodeBuffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleBarcodeKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT') return;
+
+      const currentTime = Date.now();
+      if (currentTime - lastKeyTime > 50) {
+        barcodeBuffer = '';
+      }
+      lastKeyTime = currentTime;
+
+      if (e.key.length === 1) {
+        barcodeBuffer += e.key;
+      } else if (e.key === 'Enter') {
+        if (barcodeBuffer.length > 2) {
+          e.preventDefault();
+          const barcode = barcodeBuffer.trim();
+          console.log('Scanned barcode:', barcode);
+          
+          // Match product by ID (barcode) or containing barcode in name
+          const matched = products.find(p => p.id === barcode || p.name.includes(barcode));
+          if (matched) {
+            addToCart(matched);
+            toast.success(`تم إضافة: ${matched.name}`);
+          } else {
+            toast.error(`لم يتم العثور على صنف بالباركود: ${barcode}`);
+          }
+          barcodeBuffer = '';
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleBarcodeKeyDown);
+    return () => window.removeEventListener('keydown', handleBarcodeKeyDown);
+  }, [products]);
+
+  const handlePrintInvoice = () => {
+    if (!completedInvoice) return;
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+    const itemsHtml = completedInvoice.items.map((i: any) => `
+      <tr>
+        <td style="text-align: right; padding: 6px 0;">${i.name}</td>
+        <td style="text-align: center; padding: 6px 0;">${i.qty}</td>
+        <td style="text-align: left; padding: 6px 0;">${(i.price * i.qty).toLocaleString()} ج</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>فاتورة بيع</title>
+        <style>
+          body {
+            font-family: 'Cairo', sans-serif;
+            width: 58mm;
+            margin: 0 auto;
+            padding: 10px;
+            font-size: 11px;
+            color: #000;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 12px;
+          }
+          .shop-name {
+            font-size: 14px;
+            font-weight: 900;
+            margin: 0;
+          }
+          .details {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+            font-size: 10px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+          }
+          th {
+            border-bottom: 1px solid #000;
+            padding-bottom: 4px;
+            font-size: 10px;
+          }
+          .total-section {
+            border-top: 1px dashed #000;
+            padding-top: 6px;
+            font-weight: bold;
+            font-size: 12px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 9px;
+            border-top: 1px solid #eee;
+            padding-top: 8px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2 class="shop-name">${completedInvoice.shopName}</h2>
+          <div style="font-size: 9px; color: #555;">فاتورة بيع نقدي</div>
+        </div>
+        <div class="details">
+          <div>التاريخ: ${completedInvoice.date}</div>
+          <div>طريقة الدفع: ${completedInvoice.paymentMedium === 'cash' ? 'كاش' : completedInvoice.paymentMedium === 'wallet' ? 'محفظة' : 'آجل'}</div>
+          ${completedInvoice.customerName ? `<div>العميل: ${completedInvoice.customerName}</div>` : ''}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: right;">الصنف</th>
+              <th style="text-align: center; width: 40px;">الكمية</th>
+              <th style="text-align: left; width: 60px;">السعر</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="total-section">
+          <div style="display: flex; justify-content: space-between;">
+            <span>الإجمالي:</span>
+            <span>${completedInvoice.total.toLocaleString()} جنيه</span>
+          </div>
+        </div>
+        <div class="footer">
+          <div>شكراً لتعاملكم معنا!</div>
+          <div style="font-size: 7px; margin-top: 4px; color: #888;">Powered by Al3alme Systems</div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }
+        </script>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!completedInvoice) return;
+    const itemsText = completedInvoice.items.map((i: any) => `- ${i.name} (${i.qty} قطعة) = ${(i.price * i.qty).toLocaleString()} ج`).join('\n');
+    const paymentText = completedInvoice.paymentMedium === 'cash' ? 'كاش 💵' : completedInvoice.paymentMedium === 'wallet' ? 'محفظة 📱' : 'آجل 👥';
+    const text = encodeURIComponent(
+`شكرًا لتعاملك معنا في *${completedInvoice.shopName}*! 🎉
+تفاصيل فاتورتك بتاريخ *${completedInvoice.date}*:
+----------------------------------
+${itemsText}
+----------------------------------
+*الإجمالي:* ${completedInvoice.total.toLocaleString()} جنيه
+*طريقة الدفع:* ${paymentText}
+${completedInvoice.customerName ? `*العميل:* ${completedInvoice.customerName}\n` : ''}
+تمنياتنا لك بيوم سعيد! 🌟`
+    );
+    const phone = completedInvoice.customerPhone ? completedInvoice.customerPhone.replace(/[^0-9]/g, '') : '';
+    const waUrl = phone ? `https://wa.me/20${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(waUrl, '_blank');
   };
 
   // Helper to get category icon/thumbnail
@@ -319,8 +537,9 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           <div className="relative group">
             <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={24} />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="دور على البضاعة اللي عايز تبيعها.."
+              placeholder="دور على البضاعة اللي عايز تبيعها.. (اضغط F2 للبحث السريع)"
               className="w-full pr-14 pl-6 py-5 rounded-3xl border border-gray-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition-all shadow-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-black text-lg"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -514,7 +733,47 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
         </>
       )}
 
-      {/* MissingGoods removed from here as it's now in the sidebar */}
+      {/* Invoice Modal for Printing and Sharing */}
+      {showInvoiceModal && completedInvoice && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm font-['Cairo']" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl shadow-black/50 text-right space-y-6 animate-in zoom-in duration-300">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20 text-emerald-500 text-3xl font-bold flex items-center justify-center">✓</div>
+              <h3 className="text-2xl font-black text-white">العملية تمت بنجاح!</h3>
+              <p className="text-sm text-slate-400 font-bold">تم تسجيل المبيعات وتحديث المخزون بنجاح.</p>
+            </div>
+
+            <div className="bg-slate-950/50 border border-slate-850 p-5 rounded-2xl space-y-3 text-sm">
+              <div className="flex justify-between border-b border-slate-850 pb-2"><span className="text-slate-500">المحل:</span><span className="font-bold text-white">{completedInvoice.shopName}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">التاريخ:</span><span className="font-bold text-white">{completedInvoice.date}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">طريقة الدفع:</span><span className="font-bold text-blue-400">{completedInvoice.paymentMedium === 'cash' ? 'كاش 💵' : completedInvoice.paymentMedium === 'wallet' ? 'محفظة 📱' : 'آجل 👥'}</span></div>
+              <div className="flex justify-between border-t border-slate-850 pt-2 font-black text-lg"><span className="text-slate-300">الإجمالي:</span><span className="text-emerald-500">{completedInvoice.total.toLocaleString()} ج</span></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handlePrintInvoice}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-blue-600/15"
+              >
+                🖨️ طباعة الفاتورة
+              </button>
+              <button
+                onClick={handleShareWhatsApp}
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-600/15"
+              >
+                💬 واتساب
+              </button>
+            </div>
+            
+            <button
+              onClick={() => { setShowInvoiceModal(false); setCompletedInvoice(null); }}
+              className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all text-xs border border-slate-750"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

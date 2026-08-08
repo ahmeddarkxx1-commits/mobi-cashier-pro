@@ -326,6 +326,23 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     }
   };
 
+  const handleUpdateStock = async (product: Product, delta: number) => {
+    const newStock = Math.max(0, (product.stock || 0) + delta);
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ stock: newStock })
+        .eq('id', product.id);
+      
+      if (error) throw error;
+      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: newStock } : p));
+      toast.success('تم تحديث الكمية بنجاح');
+    } catch (err) {
+      console.error('Error updating stock:', err);
+      toast.error('حصلت مشكلة أثناء تعديل الكمية!');
+    }
+  };
+
   return (
     <div className="space-y-6 font-['Cairo']">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -713,9 +730,25 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                       {product.name}
                     </div>
                     <div className="flex items-center justify-end gap-2">
-                       <span className={`text-[11px] font-black px-2 py-0.5 rounded-lg ${product.stock <= 2 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-green-100 text-green-700'}`}>
-                        متبقي: {product.stock} حتة
-                      </span>
+                      <div className="flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <button
+                          onClick={() => handleUpdateStock(product, -1)}
+                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-500 hover:text-red-500 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-base transition-all active:scale-90"
+                          title="تقليل المخزون بمقدار 1"
+                        >
+                          -
+                        </button>
+                        <span className={`text-[11px] font-black px-2.5 py-1 rounded-lg ${product.stock <= 2 ? 'bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400 animate-pulse' : 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'}`}>
+                          متبقي: {product.stock} حتة
+                        </span>
+                        <button
+                          onClick={() => handleUpdateStock(product, 1)}
+                          className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-slate-500 hover:text-emerald-500 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-base transition-all active:scale-90"
+                          title="زيادة المخزون بمقدار 1"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
 
