@@ -215,7 +215,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           amount: actualPaid,
           cost: Math.min(totalCost, actualPaid),
           profit: Math.max(0, actualPaid - totalCost),
-          description: `دفعة من بيعة آجل (${debtCustomerName}): ${cart.map(i => `${i.product.name}`).join('، ')}`,
+          description: `دفعة من بيعة آجل (${debtCustomerName}): ${cart.map(i => `${i.product.name}`).join('، ')} | JSON:${JSON.stringify(cart.map(i => ({ name: i.product.name, qty: i.qty, price: i.product.price })))}`,
           category: 'sales'
         });
       }
@@ -226,7 +226,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
         amount: total,
         cost: totalCost,
         profit: total - totalCost,
-        description: `بيع: ${cart.map(i => `${i.product.name} (${i.qty})`).join('، ')}`,
+        description: `بيع: ${cart.map(i => `${i.product.name} (${i.qty})`).join('، ')} | JSON:${JSON.stringify(cart.map(i => ({ name: i.product.name, qty: i.qty, price: i.product.price })))}`,
         category: 'sales'
       });
     }
