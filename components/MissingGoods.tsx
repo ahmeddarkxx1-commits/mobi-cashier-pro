@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Package, Plus, Trash2, Search, ClipboardList, Loader2, Smartphone } from 'lucide-react';
+import { AlertCircle, Package, Plus, Trash2, Search, ClipboardList, Loader2, Smartphone, Printer } from 'lucide-react';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 interface MissingGoodsProps {
   products: Product[];
   shopId: string | null;
+  shopName?: string;
 }
 
 interface MissingItem {
@@ -19,7 +20,7 @@ interface MissingItem {
   category?: string;
 }
 
-const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId }) => {
+const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shopName }) => {
   const [missingItems, setMissingItems] = useState<MissingItem[]>([]);
   const [newItemName, setNewItemName] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('إكسسوارات');
@@ -27,6 +28,232 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId }) =>
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+
+  const handlePrintMissingGoods = () => {
+    if (!filteredItems || filteredItems.length === 0) {
+      toast.error('لا توجد أصناف في قائمة النواقص للطباعة!');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=850,height=900');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة (Popups) للتمكن من الطباعة');
+      return;
+    }
+
+    // Group items by category
+    const grouped: Record<string, MissingItem[]> = {};
+    filteredItems.forEach(item => {
+      const cat = getItemCategory(item) || 'أخرى';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(item);
+    });
+
+    const currentDate = new Date().toLocaleDateString('ar-EG', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const currentTime = new Date().toLocaleTimeString('ar-EG', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    let categoriesHtml = '';
+    let itemCounter = 1;
+
+    Object.keys(grouped).sort().forEach(cat => {
+      const items = grouped[cat];
+      categoriesHtml += `
+        <div class="category-section">
+          <div class="category-header">
+            <span>🏷️ ${cat}</span>
+            <span class="count-badge">${items.length} صنف</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">م</th>
+                <th>اسم الصنف الناقص</th>
+                <th style="width: 110px; text-align: center;">المتبقي بالمحل</th>
+                <th style="width: 120px; text-align: center;">الكمية المطلوبة</th>
+                <th style="width: 90px; text-align: center;">الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(item => {
+                const cleanName = item.name.replace(/\s*-\s*Barcode:\s*\S+/i, '').replace(/\s*-\s*IMEI:\s*\S+/i, '').trim();
+                const stock = getStockQuantity(item.name);
+                const stockText = stock !== null ? `${stock} قطع` : 'صنف يدوي';
+                const statusText = item.status === 'received' ? 'وصل المحل' : item.status === 'ordered' ? 'تم الطلب' : 'مطلوب';
+                const statusColor = item.status === 'received' ? '#16a34a' : item.status === 'ordered' ? '#2563eb' : '#dc2626';
+                const num = itemCounter++;
+                return `
+                  <tr>
+                    <td style="text-align: center; font-weight: bold;">${num}</td>
+                    <td style="font-weight: bold; font-size: 13px;">${cleanName}</td>
+                    <td style="text-align: center; color: ${stock !== null && stock <= 1 ? '#dc2626' : '#4b5563'}; font-weight: bold;">
+                      ${stockText}
+                    </td>
+                    <td style="text-align: center;">
+                      <div class="checkbox-box">[ &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; ]</div>
+                    </td>
+                    <td style="text-align: center; color: ${statusColor}; font-weight: bold; font-size: 11px;">
+                      ${statusText}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+        <head>
+          <meta charset="utf-8" />
+          <title>قائمة النواقص - ${shopName || 'المحل'}</title>
+          <style>
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 10mm;
+              }
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: system-ui, -apple-system, sans-serif;
+              color: #1e293b;
+              background: #fff;
+              padding: 15px;
+              direction: rtl;
+            }
+            .header {
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 12px;
+              margin-bottom: 16px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .shop-title {
+              font-size: 22px;
+              font-weight: 900;
+              color: #0f172a;
+            }
+            .report-title {
+              font-size: 14px;
+              font-weight: bold;
+              color: #dc2626;
+              margin-top: 2px;
+            }
+            .meta-info {
+              text-align: left;
+              font-size: 11px;
+              color: #64748b;
+              line-height: 1.4;
+            }
+            .category-section {
+              margin-bottom: 16px;
+              page-break-inside: avoid;
+            }
+            .category-header {
+              background: #f1f5f9;
+              padding: 6px 10px;
+              border-radius: 6px;
+              font-weight: 900;
+              font-size: 13px;
+              color: #1e293b;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-right: 4px solid #3b82f6;
+              margin-bottom: 6px;
+            }
+            .count-badge {
+              font-size: 10px;
+              background: #e2e8f0;
+              padding: 2px 8px;
+              border-radius: 12px;
+              font-weight: bold;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-bottom: 8px;
+              font-size: 12px;
+            }
+            th {
+              background: #f8fafc;
+              color: #475569;
+              padding: 6px 8px;
+              border: 1px solid #cbd5e1;
+              font-weight: 900;
+              font-size: 11px;
+            }
+            td {
+              padding: 6px 8px;
+              border: 1px solid #e2e8f0;
+              vertical-align: middle;
+            }
+            tr:nth-child(even) td {
+              background-color: #fafafa;
+            }
+            .checkbox-box {
+              font-family: monospace;
+              color: #94a3b8;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 20px;
+              padding-top: 10px;
+              border-top: 1px dashed #cbd5e1;
+              display: flex;
+              justify-content: space-between;
+              font-size: 11px;
+              color: #64748b;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="shop-title">${shopName || 'مدير محل الموبايلات الذكي'}</div>
+              <div class="report-title">📋 كشف طلبيات ونواقص البضاعة (مرتبة حسب الأقسام)</div>
+            </div>
+            <div class="meta-info">
+              <div><strong>التاريخ:</strong> ${currentDate}</div>
+              <div><strong>الوقت:</strong> ${currentTime}</div>
+              <div><strong>إجمالي النواقص:</strong> ${filteredItems.length} صنف</div>
+            </div>
+          </div>
+
+          ${categoriesHtml}
+
+          <div class="footer">
+            <span>توقيع المستلم / المسؤول: ..............................</span>
+            <span>تم استخراج التقرير بواسطة نظام الكاشير الذكي</span>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   useEffect(() => {
     if (shopId) {
@@ -239,7 +466,17 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId }) =>
             <p className="text-xs font-bold text-slate-400">بضاعة خلصت أو محتاجين نطلبها (محفوظة على السحاب)</p>
           </div>
         </div>
-        {loading && <Loader2 className="animate-spin text-blue-600" />}
+        <div className="flex items-center gap-3">
+          {loading && <Loader2 className="animate-spin text-blue-600" />}
+          <button
+            onClick={handlePrintMissingGoods}
+            className="flex items-center gap-2 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all active:scale-95"
+            title="طباعة كشف النواقص مرتب حسب الأقسام"
+          >
+            <Printer size={16} />
+            <span>طباعة النواقص</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

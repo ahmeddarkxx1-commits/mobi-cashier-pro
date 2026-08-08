@@ -624,7 +624,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
             {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
             { activeSection === 'reports' && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
             { activeSection === 'debts' && <Debts shopId={shopId} addTransaction={addTransaction} /> }
-            { activeSection === 'missing_goods' && <MissingGoods products={products} shopId={shopId} /> }
+            { activeSection === 'missing_goods' && <MissingGoods products={products} shopId={shopId} shopName={shopName} /> }
             { activeSection === 'settings' && (
               <div className="pb-20">
                 <SettingsView 
