@@ -22,6 +22,11 @@ interface CashierProps {
 
 
 const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction, transferSettings, isLimited = false, shopId, appName }) => {
+  const getCleanName = (fullName: string) => {
+    if (!fullName) return '';
+    return fullName.split(' - Barcode:')[0].split(' - IMEI:')[0].trim();
+  };
+
   const [activeTab, setActiveTab] = useState<'goods' | 'transfers' | 'recharge'>('goods');
   const [selectedCategory, setSelectedCategory] = useState<Product['category'] | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -310,7 +315,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     }
     const itemsHtml = completedInvoice.items.map((i: any) => `
       <tr>
-        <td style="text-align: right; padding: 6px 0;">${i.name}</td>
+        <td style="text-align: right; padding: 6px 0;">${getCleanName(i.name)}</td>
         <td style="text-align: center; padding: 6px 0;">${i.qty}</td>
         <td style="text-align: left; padding: 6px 0;">${(i.price * i.qty).toLocaleString()} ج</td>
       </tr>
@@ -418,7 +423,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
 
   const handleShareWhatsApp = () => {
     if (!completedInvoice) return;
-    const itemsText = completedInvoice.items.map((i: any) => `- ${i.name} (${i.qty} قطعة) = ${(i.price * i.qty).toLocaleString()} ج`).join('\n');
+    const itemsText = completedInvoice.items.map((i: any) => `- ${getCleanName(i.name)} (${i.qty} قطعة) = ${(i.price * i.qty).toLocaleString()} ج`).join('\n');
     const paymentText = completedInvoice.paymentMedium === 'cash' ? 'كاش 💵' : completedInvoice.paymentMedium === 'wallet' ? 'محفظة 📱' : 'آجل 👥';
     const text = encodeURIComponent(
 `شكرًا لتعاملك معنا في *${completedInvoice.shopName}*! 🎉
@@ -559,7 +564,7 @@ ${completedInvoice.customerName ? `*العميل:* ${completedInvoice.customerNa
                 
                 <div className="flex-1 space-y-1">
                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getCategoryLabel(p.category)}</div>
-                   <div className="font-black text-gray-800 dark:text-white truncate text-base">{p.name}</div>
+                   <div className="font-black text-gray-800 dark:text-white truncate text-base">{getCleanName(p.name)}</div>
                    <div className="text-green-600 font-black text-lg">{p.price.toLocaleString()} ج</div>
                 </div>
 
@@ -635,7 +640,7 @@ ${completedInvoice.customerName ? `*العميل:* ${completedInvoice.customerNa
                               <ProductImage product={item.product} />
                            </div>
                            <div>
-                              <div className="font-black text-gray-800 text-lg">{item.product.name}</div>
+                              <div className="font-black text-gray-800 text-lg">{getCleanName(item.product.name)}</div>
                               <div className="text-xs text-blue-600 font-bold">سعر القطعة: {item.product.price.toLocaleString()} ج</div>
                            </div>
                         </div>

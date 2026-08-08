@@ -25,7 +25,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     cost: 0,
     category: 'accessory',
     stock: 0,
-    imei: ''
+    imei: '',
+    barcode: ''
   });
 
   const CATEGORY_ICONS: Record<string, string> = {
@@ -247,8 +248,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     if (!shopId) return;
     setIsSaving(true);
 
+    let finalName = newProduct.name.trim();
+    if (newProduct.imei) finalName += ` - IMEI: ${newProduct.imei.trim()}`;
+    if (newProduct.barcode) finalName += ` - Barcode: ${newProduct.barcode.trim()}`;
+
     const finalProduct = {
-      name: newProduct.imei ? `${newProduct.name.trim()} - IMEI: ${newProduct.imei.trim()}` : newProduct.name.trim(),
+      name: finalName,
       price: newProduct.price,
       wholesale_price: newProduct.wholesale_price,
       cost: newProduct.cost,
@@ -297,16 +302,26 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   const closeModal = () => {
     setIsAdding(false);
     setEditingId(null);
-    setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0, imei: '' });
+    setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0, imei: '', barcode: '' });
   };
 
   const startEdit = (product: Product) => {
     let displayName = product.name;
     let imei = '';
-    const match = product.name.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
-    if (match) {
-      displayName = match[1].trim();
-      imei = match[2].trim();
+    let barcode = '';
+
+    // Parse Barcode
+    const barcodeMatch = displayName.match(/(.+)\s*-\s*Barcode:\s*(\w+)/i);
+    if (barcodeMatch) {
+      displayName = barcodeMatch[1].trim();
+      barcode = barcodeMatch[2].trim();
+    }
+
+    // Parse IMEI
+    const imeiMatch = displayName.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
+    if (imeiMatch) {
+      displayName = imeiMatch[1].trim();
+      imei = imeiMatch[2].trim();
     }
 
     setNewProduct({ 
@@ -316,7 +331,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
       cost: product.cost, 
       category: product.category, 
       stock: product.stock,
-      imei: imei
+      imei: imei,
+      barcode: barcode
     });
     setEditingId(product.id);
     setIsAdding(true);
@@ -567,6 +583,15 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                     className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
                     value={newProduct.imei || ''} 
                     onChange={e => setNewProduct({...newProduct, imei: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">رمز الباركود (Barcode)</label>
+                  <input 
+                    placeholder="امسح أو اكتب الباركود للمنتج..." 
+                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
+                    value={newProduct.barcode || ''} 
+                    onChange={e => setNewProduct({...newProduct, barcode: e.target.value})} 
                   />
                 </div>
                 <div className="space-y-2 text-right">
