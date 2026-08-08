@@ -90,7 +90,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               padding: 1mm 1mm 0 1mm;
             }
             .store-name {
-              font-size: 13px;
+              font-size: 17px;
               font-weight: 900;
               text-align: center;
               width: 100%;
@@ -100,7 +100,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               line-height: 1.2;
             }
             .product-name {
-              font-size: 8px;
+              font-size: 10px;
               font-weight: 700;
               text-align: center;
               width: 100%;
@@ -120,7 +120,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               width: 100%;
             }
             .price {
-              font-size: 9px;
+              font-size: 10px;
               font-weight: 900;
               text-align: center;
               width: 100%;
