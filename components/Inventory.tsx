@@ -168,7 +168,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
                   width: 3,
                   height: 40,
                   displayValue: true,
-                  fontSize: 10,
+                  fontSize: 16,
                   fontOptions: "bold",
                   margin: 0
                 });
