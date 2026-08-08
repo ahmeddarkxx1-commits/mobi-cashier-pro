@@ -97,7 +97,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
-              line-height: 1.2;
+              line-height: 1.4;
+              padding-bottom: 1px;
             }
             .product-name {
               font-size: 9.5px;
@@ -148,9 +149,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
                 JsBarcode("#barcode-elem", code, {
                   format: fmt,
                   width: 1.5,
-                  height: 30,
+                  height: 25,
                   displayValue: true,
-                  fontSize: 20,
+                  fontSize: 12,
                   fontOptions: "bold",
                   margin: 0
                 });
