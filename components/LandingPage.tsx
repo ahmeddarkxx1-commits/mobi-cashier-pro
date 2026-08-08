@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 import { 
   Smartphone, 
   ShieldCheck, 
@@ -38,6 +39,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
   const [scrolled, setScrolled] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+
+  const [isTracking, setIsTracking] = useState(false);
+  const [trackingValue, setTrackingValue] = useState('');
+  const [trackingResults, setTrackingResults] = useState<any[]>([]);
+  const [isQuerying, setIsQuerying] = useState(false);
+  const [queryError, setQueryError] = useState('');
+
+  const handleTrackDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackingValue.trim()) return;
+    setIsQuerying(true);
+    setQueryError('');
+    setTrackingResults([]);
+
+    try {
+      const searchStr = trackingValue.trim();
+      
+      const { data, error } = await supabase
+        .from('maintenance_jobs')
+        .select('id, customerName, phoneModel, issue, status, date')
+        .or(`id.eq."${searchStr}",customerPhone.eq."${searchStr}"`);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setTrackingResults(data);
+      } else {
+        setQueryError('لم يتم العثور على أي أجهزة مسجلة بهذا الكود أو رقم الهاتف.');
+      }
+    } catch (err) {
+      console.error(err);
+      setQueryError('حدث خطأ أثناء البحث، يرجى التحقق من الاتصال بالشبكة.');
+    } finally {
+      setIsQuerying(false);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -85,7 +122,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
             <a href="#pricing" className="text-sm font-bold text-slate-400 hover:text-emerald-400 transition-colors">الأسعار</a>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 animate-in fade-in duration-300">
+            <button 
+              onClick={() => { setIsTracking(true); setTrackingValue(''); setTrackingResults([]); setQueryError(''); }}
+              className="text-xs md:text-sm font-black text-emerald-400 hover:text-emerald-300 transition-colors px-3 md:px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+            >
+              🔍 تتبع جهازك
+            </button>
             <button onClick={onLogin} className="text-xs md:text-sm font-black text-slate-200 hover:text-white transition-colors px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl hover:bg-white/5">
               دخول
             </button>
@@ -521,6 +564,84 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
           </div>
         </div>
       </footer>
+
+      {/* Public Repair Tracking Modal */}
+      {isTracking && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-white/10 rounded-[3rem] p-8 max-w-lg w-full relative text-right font-['Cairo']" dir="rtl">
+            <button 
+              onClick={() => setIsTracking(false)} 
+              className="absolute top-6 left-6 text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="text-center space-y-2 mb-6">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20 text-emerald-400 text-2xl font-bold">🔧</div>
+              <h3 className="text-2xl font-black text-white">تتبع حالة صيانة جهازك</h3>
+              <p className="text-sm text-slate-400 font-bold">استعلم عن حالة هاتفك في الصيانة بدون تسجيل دخول.</p>
+            </div>
+
+            <form onSubmit={handleTrackDevice} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 mr-1">كود الصيانة (ID) أو رقم تليفون العميل</label>
+                <div className="flex gap-2">
+                  <button 
+                    type="submit" 
+                    disabled={isQuerying}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm shrink-0"
+                  >
+                    {isQuerying ? 'جاري البحث...' : 'استعلم الآن'}
+                  </button>
+                  <input 
+                    required 
+                    placeholder="مثال: 010xxxxxxxx أو 123..." 
+                    className="flex-1 p-4 rounded-2xl border-2 border-white/5 bg-slate-950 text-right font-bold text-base text-white focus:border-emerald-500 outline-none transition-all" 
+                    value={trackingValue}
+                    onChange={e => setTrackingValue(e.target.value)}
+                  />
+                </div>
+              </div>
+            </form>
+
+            {queryError && (
+              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm font-bold text-center">
+                {queryError}
+              </div>
+            )}
+
+            {trackingResults.length > 0 && (
+              <div className="mt-6 space-y-4 max-h-[300px] overflow-y-auto no-scrollbar">
+                {trackingResults.map((job) => (
+                  <div key={job.id} className="p-5 bg-slate-950 border border-white/5 rounded-2xl space-y-3">
+                    <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                      <span className="text-xs text-slate-500 font-black">كود الصيانة: #{job.id}</span>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black ${
+                        job.status === 'completed' ? 'bg-green-500/15 text-green-400' :
+                        job.status === 'in-progress' ? 'bg-blue-500/15 text-blue-400' :
+                        job.status === 'delivered' ? 'bg-slate-500/15 text-slate-400' : 'bg-amber-500/15 text-amber-400'
+                      }`}>
+                        {
+                          job.status === 'pending' ? 'في الانتظار ⏳' :
+                          job.status === 'in-progress' ? 'قيد العمل 🔧' :
+                          job.status === 'completed' ? 'جاهز للاستلام 🎉' : 'تم التسليم 🤝'
+                        }
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs font-bold text-right" dir="rtl">
+                      <div><span className="text-slate-500">العميل:</span> <span className="text-white">{job.customerName}</span></div>
+                      <div><span className="text-slate-500">الجهاز:</span> <span className="text-emerald-400">{job.phoneModel}</span></div>
+                    </div>
+
+                    <div className="text-xs font-bold text-right" dir="rtl"><span className="text-slate-500">العيب المسجل:</span> <span className="text-slate-300">{job.issue}</span></div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       {showPrivacy && (

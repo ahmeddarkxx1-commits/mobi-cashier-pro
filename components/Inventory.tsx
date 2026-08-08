@@ -24,7 +24,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     wholesale_price: 0,
     cost: 0,
     category: 'accessory',
-    stock: 0
+    stock: 0,
+    imei: ''
   });
 
   const CATEGORY_ICONS: Record<string, string> = {
@@ -246,23 +247,32 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     if (!shopId) return;
     setIsSaving(true);
 
+    const finalProduct = {
+      name: newProduct.imei ? `${newProduct.name.trim()} - IMEI: ${newProduct.imei.trim()}` : newProduct.name.trim(),
+      price: newProduct.price,
+      wholesale_price: newProduct.wholesale_price,
+      cost: newProduct.cost,
+      category: newProduct.category,
+      stock: newProduct.stock
+    };
+
     try {
       if (editingId) {
         // Update DB
         const { error } = await supabase
           .from('products')
-          .update({ ...newProduct })
+          .update(finalProduct)
           .eq('id', editingId);
         
         if (error) throw error;
 
-        setProducts(prev => prev.map(p => p.id === editingId ? { ...p, ...newProduct } : p));
+        setProducts(prev => prev.map(p => p.id === editingId ? { ...p, ...finalProduct } : p));
         toast.success('تم تحديث البيانات بنجاح');
       } else {
         const { data: productData, error } = await supabase
           .from('products')
           .insert([{
-            ...newProduct,
+            ...finalProduct,
             shop_id: shopId
           }])
           .select()
@@ -287,17 +297,26 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   const closeModal = () => {
     setIsAdding(false);
     setEditingId(null);
-    setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0 });
+    setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0, imei: '' });
   };
 
   const startEdit = (product: Product) => {
+    let displayName = product.name;
+    let imei = '';
+    const match = product.name.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
+    if (match) {
+      displayName = match[1].trim();
+      imei = match[2].trim();
+    }
+
     setNewProduct({ 
-      name: product.name, 
+      name: displayName, 
       price: product.price, 
       wholesale_price: product.wholesale_price || 0, 
       cost: product.cost, 
       category: product.category, 
-      stock: product.stock 
+      stock: product.stock,
+      imei: imei
     });
     setEditingId(product.id);
     setIsAdding(true);
@@ -539,6 +558,15 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                     className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
                     value={newProduct.name} 
                     onChange={e => setNewProduct({...newProduct, name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2 text-right">
+                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">رقم الـ IMEI (اختياري للهواتف)</label>
+                  <input 
+                    placeholder="رقم الـ IMEI المتكون من 15 رقم..." 
+                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
+                    value={newProduct.imei || ''} 
+                    onChange={e => setNewProduct({...newProduct, imei: e.target.value})} 
                   />
                 </div>
                 <div className="space-y-2 text-right">

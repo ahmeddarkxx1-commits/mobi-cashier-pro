@@ -21,6 +21,16 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
   const [deleteModal, setDeleteModal] = useState<{isOpen: boolean, debtId: string | null}>({isOpen: false, debtId: null});
   const [viewModal, setViewModal] = useState<{isOpen: boolean, debt: Debt | null}>({isOpen: false, debt: null});
 
+  const [isAddingInstallment, setIsAddingInstallment] = useState(false);
+  const [installmentData, setInstallmentData] = useState({
+    customerName: '',
+    customerPhone: '',
+    totalAmount: 0,
+    months: 6,
+    interestRate: 0,
+    description: ''
+  });
+
   useEffect(() => {
     if (!shopId) return;
     const fetchDebts = async () => {
@@ -108,6 +118,55 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
     }
   };
 
+  const handleAddInstallment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shopId || installmentData.totalAmount <= 0 || installmentData.months <= 0) return;
+
+    const interest = Number(installmentData.interestRate) || 0;
+    const finalTotal = installmentData.totalAmount * (1 + interest / 100);
+    const monthlyAmount = Math.round(finalTotal / installmentData.months);
+
+    try {
+      const generatedDebts: Debt[] = [];
+      for (let i = 1; i <= installmentData.months; i++) {
+        const due = new Date();
+        due.setMonth(due.getMonth() + i);
+
+        const debtRow = {
+          customerName: installmentData.customerName,
+          customerPhone: installmentData.customerPhone || undefined,
+          amount: monthlyAmount,
+          remainingAmount: monthlyAmount,
+          description: `قسط (${i}/${installmentData.months}) لشراء جهاز: ${installmentData.description || ''}`,
+          date: new Date().toISOString(),
+          dueDate: due.toISOString(),
+          status: 'pending' as const,
+          type: 'sale' as const,
+          shop_id: shopId
+        };
+
+        const { data: created, error } = await createDebt(debtRow, shopId);
+        if (error) throw error;
+        if (created) generatedDebts.push(created);
+      }
+
+      setDebts(prev => [...generatedDebts, ...prev]);
+      setIsAddingInstallment(false);
+      setInstallmentData({
+        customerName: '',
+        customerPhone: '',
+        totalAmount: 0,
+        months: 6,
+        interestRate: 0,
+        description: ''
+      });
+      toast.success(`تم توليد وجدولة ${installmentData.months} أقساط بنجاح!`);
+    } catch (err) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء جدولة الأقساط!');
+    }
+  };
+
   const handleDeleteDebt = async () => {
     const id = deleteModal.debtId;
     if (!id) return;
@@ -171,13 +230,21 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button 
-          onClick={() => setIsAddingDebt(true)}
-          className="bg-slate-900 text-white px-8 py-5 rounded-3xl font-black flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10 active:scale-95"
-        >
-          <UserPlus size={24} />
-          إضافة دين جديد
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setIsAddingInstallment(true)}
+            className="bg-emerald-600 text-white px-6 py-5 rounded-3xl font-black flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-500/10 active:scale-95"
+          >
+            🗓️ تقسيط وجدولة
+          </button>
+          <button 
+            onClick={() => setIsAddingDebt(true)}
+            className="bg-slate-900 text-white px-6 py-5 rounded-3xl font-black flex items-center justify-center gap-2 hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10 active:scale-95"
+          >
+            <UserPlus size={24} />
+            إضافة دين جديد
+          </button>
+        </div>
       </div>
 
       {/* Debt List */}
@@ -240,6 +307,12 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
                     </td>
                     <td className="px-8 py-6 text-gray-500 font-bold text-sm">
                        <div className="flex items-center gap-2"><Calendar size={14}/> {new Date(debt.date).toLocaleDateString('ar-EG')}</div>
+                       {debt.dueDate && debt.status !== 'paid' && (
+                         <div className="text-[10px] text-red-500 dark:text-red-400 font-black mt-1 flex items-center gap-1 bg-red-50 dark:bg-red-950/20 px-2 py-0.5 rounded w-fit">
+                           <span>تاريخ الاستحقاق:</span>
+                           <span>{new Date(debt.dueDate).toLocaleDateString('ar-EG')}</span>
+                         </div>
+                       )}
                     </td>
                     <td className="px-8 py-6 font-black text-slate-900">{debt.amount.toLocaleString()} ج</td>
                     <td className="px-8 py-6">
@@ -413,6 +486,58 @@ const Debts: React.FC<DebtsProps> = ({ shopId, addTransaction }) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Installment Calculator & Scheduler Modal */}
+      {isAddingInstallment && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+          <form onSubmit={handleAddInstallment} className="bg-white dark:bg-slate-900 w-full max-w-lg p-8 rounded-[2.5rem] shadow-2xl space-y-6 relative border border-slate-100 dark:border-slate-800 text-right font-['Cairo']" dir="rtl">
+            <button type="button" onClick={() => setIsAddingInstallment(false)} className="absolute top-6 left-6 text-slate-400 hover:text-red-500"><X size={24}/></button>
+            <h4 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2 justify-end">
+              جدولة وتقسيط مديونية 🗓️
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700">اسم العميل</label>
+                <input required placeholder="اسم الزبون..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={installmentData.customerName} onChange={e => setInstallmentData({...installmentData, customerName: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-black text-slate-700">رقم الموبايل</label>
+                <input placeholder="01X..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={installmentData.customerPhone} onChange={e => setInstallmentData({...installmentData, customerPhone: e.target.value})} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700">المبلغ الأصلي</label>
+                <input type="number" required placeholder="0" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-center font-black outline-none focus:border-blue-500" value={installmentData.totalAmount || ''} onChange={e => setInstallmentData({...installmentData, totalAmount: Number(e.target.value)})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700">عدد الأقساط (شهور)</label>
+                <input type="number" required placeholder="6" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-center font-black outline-none focus:border-blue-500" value={installmentData.months} onChange={e => setInstallmentData({...installmentData, months: Number(e.target.value)})} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-700">نسبة الفائدة %</label>
+                <input type="number" placeholder="0" className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-center font-black outline-none focus:border-blue-500" value={installmentData.interestRate || ''} onChange={e => setInstallmentData({...installmentData, interestRate: Number(e.target.value)})} />
+              </div>
+            </div>
+
+            {installmentData.totalAmount > 0 && (
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-sm space-y-2">
+                <div className="flex justify-between font-bold"><span className="text-slate-500">مجموع الفوائد:</span><span className="text-red-500">{(installmentData.totalAmount * (installmentData.interestRate / 100)).toLocaleString()} ج</span></div>
+                <div className="flex justify-between font-bold"><span className="text-slate-500">المبلغ الكلي بعد الفائدة:</span><span className="text-slate-800 dark:text-white">{(installmentData.totalAmount * (1 + installmentData.interestRate / 100)).toLocaleString()} ج</span></div>
+                <div className="flex justify-between font-black text-lg border-t border-emerald-250 pt-2"><span className="text-emerald-700">قيمة القسط الشهري:</span><span className="text-emerald-600">{Math.round((installmentData.totalAmount * (1 + installmentData.interestRate / 100)) / installmentData.months).toLocaleString()} ج</span></div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-black text-slate-700">نوع الجهاز / البيان</label>
+              <input placeholder="مثلاً: شراء هاتف شاومي 13..." className="w-full p-4 rounded-2xl border-2 border-slate-100 dark:bg-slate-800 text-right font-bold outline-none focus:border-blue-500" value={installmentData.description} onChange={e => setInstallmentData({...installmentData, description: e.target.value})} />
+            </div>
+            
+            <button type="submit" className="w-full bg-emerald-600 text-white rounded-2xl font-black py-5 shadow-xl text-lg hover:bg-emerald-500 active:scale-95 transition-all">توليد وجدولة الأقساط تلقائياً</button>
+          </form>
         </div>
       )}
     </div>
