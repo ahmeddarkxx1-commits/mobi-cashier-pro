@@ -131,12 +131,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               align-items: center;
               margin: 0;
               padding: 0;
-              height: 28px;
-              overflow: hidden;
+              flex: 1;
             }
             #barcode-elem {
-              max-width: 95%;
-              height: 28px;
+              width: 100% !important;
               display: block;
               margin: 0 auto;
             }
