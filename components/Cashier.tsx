@@ -9,7 +9,7 @@ import BalanceRecharge from './BalanceRecharge';
 import { updateProductStock, createDebt } from '../supabaseHelpers';
 import MissingGoods from './MissingGoods';
 import { AlertCircle } from 'lucide-react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface CashierProps {
   products: Product[];
@@ -314,12 +314,26 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
   useEffect(() => {
     if (!isCameraScannerOpen) return;
 
+    const formatsToSupport = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ];
+
     const scanner = new Html5QrcodeScanner(
       "reader",
       { 
-        fps: 10, 
+        fps: 15, 
         rememberLastUsedCamera: true,
-        supportedScanTypes: [0] // Camera scan type only
+        supportedScanTypes: [0], // Camera scan type only
+        formatsToSupport: formatsToSupport,
+        qrbox: (width, height) => {
+          return { width: Math.min(width * 0.8, 300), height: 120 };
+        }
       },
       false
     );

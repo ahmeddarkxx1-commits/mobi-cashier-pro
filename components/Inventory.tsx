@@ -3,7 +3,7 @@ import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2
 import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 interface InventoryProps {
   products: Product[];
@@ -306,12 +306,26 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
   useEffect(() => {
     if (!isFormCameraOpen) return;
 
+    const formatsToSupport = [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ];
+
     const scanner = new Html5QrcodeScanner(
       "form-reader",
       { 
-        fps: 10, 
+        fps: 15, 
         rememberLastUsedCamera: true,
-        supportedScanTypes: [0] // Camera scan type only
+        supportedScanTypes: [0], // Camera scan type only
+        formatsToSupport: formatsToSupport,
+        qrbox: (width, height) => {
+          return { width: Math.min(width * 0.8, 300), height: 120 };
+        }
       },
       false
     );
