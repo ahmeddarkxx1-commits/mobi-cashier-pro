@@ -163,8 +163,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
           <script>
             window.onload = function() {
               try {
-                JsBarcode("#barcode-elem", "${barcode}", {
-                  format: "CODE128",
+                var code = "${barcode}";
+                var fmt = "CODE128";
+                if (/^\d{13}$/.test(code)) fmt = "EAN13";
+                else if (/^\d{8}$/.test(code)) fmt = "EAN8";
+                JsBarcode("#barcode-elem", code, {
+                  format: fmt,
                   width: 2,
                   height: 55,
                   displayValue: true,
