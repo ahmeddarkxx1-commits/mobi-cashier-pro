@@ -46,6 +46,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
   const [isQuerying, setIsQuerying] = useState(false);
   const [queryError, setQueryError] = useState('');
 
+  const getTrackingCode = (phone: string | undefined) => {
+    if (!phone) return '';
+    const match = phone.match(/\| كود:\s*(\d+)/);
+    return match ? match[1] : '';
+  };
+
   const handleTrackDevice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingValue.trim()) return;
@@ -58,8 +64,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
       
       const { data, error } = await supabase
         .from('maintenance_jobs')
-        .select('id, customerName, phoneModel, issue, status, date')
-        .or(`id.eq."${searchStr}",customerPhone.eq."${searchStr}"`);
+        .select('id, customerName, phoneModel, issue, status, date, customerPhone')
+        .ilike('customerPhone', `%${searchStr}%`);
 
       if (error) throw error;
 
@@ -615,7 +621,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
                 {trackingResults.map((job) => (
                   <div key={job.id} className="p-5 bg-slate-950 border border-white/5 rounded-2xl space-y-3">
                     <div className="flex justify-between items-center pb-2 border-b border-white/5">
-                      <span className="text-xs text-slate-500 font-black">كود الصيانة: #{job.id}</span>
+                      <span className="text-xs text-slate-500 font-black">كود الصيانة: #{getTrackingCode(job.customerPhone) || job.id.slice(0, 8)}</span>
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black ${
                         job.status === 'completed' ? 'bg-green-500/15 text-green-400' :
                         job.status === 'in-progress' ? 'bg-blue-500/15 text-blue-400' :

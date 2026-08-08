@@ -56,6 +56,17 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts' | 'parts_sale' | 'quick'>('workshop');
   const [showAddJob, setShowAddJob] = useState(false);
+
+  const getCleanPhone = (phone: string | undefined) => {
+    if (!phone) return '';
+    return phone.split(' | كود:')[0].trim();
+  };
+
+  const getTrackingCode = (phone: string | undefined) => {
+    if (!phone) return '';
+    const match = phone.match(/\| كود:\s*(\d+)/);
+    return match ? match[1] : '';
+  };
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -186,8 +197,10 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     setIsSaving(true);
 
     try {
+      const trackingCode = Math.floor(10000 + Math.random() * 90000).toString();
       const jobData: Omit<MaintenanceJob, 'id'> = {
         ...jobForm,
+        customerPhone: jobForm.customerPhone ? `${jobForm.customerPhone} | كود: ${trackingCode}` : `كود: ${trackingCode}`,
         notes: '',
         partsUsed: '',
         missingParts: '',
@@ -639,7 +652,17 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                               {job.phoneModel}
                               {isNew && <span className="bg-red-500 text-white text-[9px] px-2 py-0.5 rounded-full font-black animate-bounce">لسه واصل</span>}
                             </div>
-                            <div className="text-xs font-bold text-slate-400 flex items-center gap-1 mt-1"><User size={12}/> {job.customerName}</div>
+                             <div className="text-xs font-bold text-slate-400 flex flex-wrap items-center gap-3 mt-1 justify-start">
+                               <span className="flex items-center gap-1"><User size={12}/> {job.customerName}</span>
+                               {job.customerPhone && (
+                                 <span className="text-slate-500 font-mono" dir="ltr">{getCleanPhone(job.customerPhone)}</span>
+                               )}
+                               {getTrackingCode(job.customerPhone) && (
+                                 <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-lg font-black text-[10px]">
+                                   كود التتبع: {getTrackingCode(job.customerPhone)}
+                                 </span>
+                               )}
+                             </div>
                          </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
