@@ -70,12 +70,13 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
           <style>
             @page {
               size: 38mm 25mm;
-              margin: 0;
+              margin: 0 !important;
             }
             body {
               margin: 0;
+              padding: 0;
               width: 38mm;
-              height: 25mm;
+              height: 23mm;
               display: flex;
               flex-direction: column;
               align-items: center;
@@ -86,12 +87,20 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               color: black;
               text-align: center;
               box-sizing: border-box;
-              padding: 2px 1px;
+            }
+            @media print {
+              html, body {
+                width: 38mm;
+                height: 23mm;
+                overflow: hidden;
+              }
             }
             .store-name {
-              font-size: 10px;
+              font-size: 9px;
               font-weight: 900;
-              margin-bottom: 2px;
+              line-height: 1.1;
+              margin: 0;
+              padding: 0;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
@@ -99,9 +108,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               text-transform: uppercase;
             }
             .product-name {
-              font-size: 11px;
+              font-size: 10px;
               font-weight: 900;
-              margin-bottom: 3px;
+              line-height: 1.1;
+              margin: 2px 0 1px 0;
+              padding: 0;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
@@ -112,15 +123,19 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               display: flex;
               justify-content: center;
               align-items: center;
+              margin: 0;
+              padding: 0;
             }
             #barcode-elem {
               max-width: 95%;
-              height: 40px;
+              height: 30px;
             }
             .price {
-              font-size: 11px;
+              font-size: 10px;
               font-weight: 900;
-              margin-top: 1px;
+              line-height: 1.1;
+              margin: 1px 0 0 0;
+              padding: 0;
             }
           </style>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
@@ -137,10 +152,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               try {
                 JsBarcode("#barcode-elem", "${barcode}", {
                   format: "CODE128",
-                  width: 1.3,
-                  height: 30,
+                  width: 1.2,
+                  height: 20,
                   displayValue: true,
-                  fontSize: 10,
+                  fontSize: 9,
                   fontOptions: "bold",
                   margin: 0
                 });
