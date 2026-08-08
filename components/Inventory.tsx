@@ -75,8 +75,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             html, body {
               margin: 0 !important;
               padding: 0 !important;
-              width: 38mm;
-              height: 23mm;
+              width: 100% !important;
+              height: 100% !important;
+              display: flex !important;
+              justify-content: center !important;
+              align-items: center !important;
               overflow: hidden;
               background: white;
               color: black;
