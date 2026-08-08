@@ -825,208 +825,269 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       )}
 
       {isAdding && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] overflow-y-auto no-scrollbar rounded-[3rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
-            <div className="sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 border-b dark:border-slate-800 flex items-center justify-between z-10">
-              <h4 className="text-2xl font-black text-slate-800 dark:text-white">
-                {editingId ? 'تعديل الصنف' : 'إضافة صنف جديد'}
-              </h4>
-              <button onClick={closeModal} className="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl transition-all">
-                <X size={24} />
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 overflow-hidden">
+            
+            {/* Header */}
+            <div className="sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl font-bold">
+                  {editingId ? '✏️' : '✨'}
+                </div>
+                <div className="text-right">
+                  <h4 className="text-base sm:text-lg font-black text-slate-800 dark:text-white leading-tight">
+                    {editingId ? 'تعديل الصنف' : 'إضافة صنف جديد'}
+                  </h4>
+                  <p className="text-[11px] font-bold text-slate-400">
+                    {editingId ? 'تحديث بيانات وسعر ومخزون الصنف' : 'إضافة منتج أو قطعة غيار للمخزن'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={closeModal} 
+                className="w-9 h-9 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-500 text-slate-400 rounded-xl transition-all"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">اسم المنتج</label>
+            {/* Scrollable Form Body */}
+            <form id="product-form" onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 no-scrollbar">
+              
+              {/* SECTION 1: الأساسيات (اسم المنتج والباركود) */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
+                
+                {/* اسم المنتج */}
+                <div className="space-y-1 text-right">
+                  <label className="text-[11px] font-black text-slate-500 uppercase flex items-center justify-between">
+                    <span className="text-red-500 font-bold">* اسم المنتج أو الصنف</span>
+                    <span className="text-[10px] text-slate-400 font-normal">واضح ومختصر</span>
+                  </label>
                   <input 
-                    placeholder="مثلاً: شاشة ايفون 11 اصلية..." 
+                    placeholder="مثال: شاشة اوبو A76 أصلية / كابل تايب سي..." 
                     required 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
+                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-right font-bold text-sm sm:text-base focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 outline-none transition-all" 
                     value={newProduct.name} 
                     onChange={e => setNewProduct({...newProduct, name: e.target.value})} 
                   />
                 </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">رقم الـ IMEI (اختياري للهواتف)</label>
-                  <input 
-                    placeholder="رقم الـ IMEI المتكون من 15 رقم..." 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
-                    value={newProduct.imei || ''} 
-                    onChange={e => setNewProduct({...newProduct, imei: e.target.value})} 
-                  />
-                </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest flex justify-between items-center">
-                    <span>رمز الباركود (Barcode)</span>
-                    <div className="flex gap-2">
+
+                {/* الباركود مع أزرار سريعة ومدمجة */}
+                <div className="space-y-1 text-right">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-slate-500">رمز الباركود (Barcode)</label>
+                    <div className="flex items-center gap-1.5">
                       <button 
                         type="button" 
                         onClick={handleGenerateBarcode}
-                        className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-black hover:bg-indigo-100 transition-colors"
+                        className="text-[10px] bg-indigo-100/80 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg font-black hover:bg-indigo-200 transition-all flex items-center gap-1 active:scale-95"
                       >
-                        ⚡ توليد تلقائي للقسم
+                        ⚡ توليد باركود
                       </button>
                       <button 
                         type="button" 
                         onClick={() => setIsFormCameraOpen(true)}
-                        className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg font-black hover:bg-blue-100 transition-colors flex items-center gap-1"
+                        className="text-[10px] bg-blue-100/80 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg font-black hover:bg-blue-200 transition-all flex items-center gap-1 active:scale-95"
                       >
-                        📷 قراءة بالكاميرا
+                        📷 سكان
                       </button>
                     </div>
-                  </label>
+                  </div>
                   <input 
-                    placeholder="امسح أو اكتب الباركود للمنتج..." 
-                    className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
+                    placeholder="امسح بالاسكنر أو اكتب الباركود..." 
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-right font-mono font-bold text-sm focus:border-indigo-500 outline-none transition-all" 
                     value={newProduct.barcode || ''} 
                     onChange={e => setNewProduct({...newProduct, barcode: e.target.value})} 
                   />
                 </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">الكمية المتاحة</label>
+
+                {/* IMEI للهواتف (اختياري) */}
+                <div className="space-y-1 text-right">
+                  <label className="text-[10px] font-bold text-slate-400">رقم IMEI (اختياري للهواتف فقط)</label>
                   <input 
-                    type="number" 
-                    placeholder="0" 
-                    required 
-                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-xl focus:border-indigo-500 outline-none transition-all" 
-                    value={newProduct.stock || ''} 
-                    onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})} 
+                    placeholder="15 رقم للـ IMEI..." 
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-right font-mono font-bold text-xs focus:border-indigo-500 outline-none transition-all" 
+                    value={newProduct.imei || ''} 
+                    onChange={e => setNewProduct({...newProduct, imei: e.target.value})} 
                   />
                 </div>
+
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر التكلفة (عليّ بكام؟)</label>
-                  <input 
-                    type="number" 
-                    placeholder="0" 
-                    required 
-                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-lg sm:text-xl focus:border-blue-500 outline-none transition-all" 
-                    value={newProduct.cost || ''} 
-                    onChange={e => setNewProduct({...newProduct, cost: Number(e.target.value)})} 
-                  />
+              {/* SECTION 2: الأسعار والمخزون في شبكة واحدة مدمجة وأنيقة */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-slate-600 dark:text-slate-300">💰 الأسعار والمخزون</span>
+                  <span className="text-[10px] text-slate-400 font-bold">بالجنيه المصري</span>
                 </div>
-                <div className="space-y-2 text-right">
-                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر البيع للزبون</label>
-                  <input 
-                    type="number" 
-                    placeholder="0" 
-                    required 
-                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-black text-lg sm:text-xl focus:border-green-500 outline-none transition-all text-green-600" 
-                    value={newProduct.price || ''} 
-                    onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} 
-                  />
-                </div>
-                <div className="space-y-2 text-right sm:col-span-2 md:col-span-1">
-                  <label className="text-[10px] sm:text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">سعر الجملة (للمحلات)</label>
-                  <input 
-                    type="number" 
-                    placeholder="0" 
-                    className="w-full p-4 sm:p-5 rounded-2xl border-2 border-blue-50 dark:border-blue-900/20 bg-blue-50/30 dark:bg-blue-900/10 text-right font-black text-lg sm:text-xl focus:border-blue-500 outline-none transition-all text-blue-600" 
-                    value={newProduct.wholesale_price || ''} 
-                    onChange={e => setNewProduct({...newProduct, wholesale_price: Number(e.target.value)})} 
-                  />
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-3xl flex flex-col gap-4">
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. اختر نوع البضاعة (المجموعة)</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* الكمية */}
+                  <div className="space-y-1 text-right bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <label className="text-[10px] font-black text-slate-500 block">📦 الكمية</label>
+                    <div className="flex items-center gap-1">
+                      <button 
+                        type="button"
+                        onClick={() => setNewProduct({...newProduct, stock: Math.max(0, (newProduct.stock || 0) - 1)})}
+                        className="w-6 h-6 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-500 rounded-lg text-xs font-black transition-colors"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="number" 
+                        inputMode="numeric"
+                        required 
+                        className="w-full py-0.5 text-center font-black text-sm sm:text-base text-slate-800 dark:text-white bg-transparent outline-none" 
+                        value={newProduct.stock ?? ''} 
+                        onChange={e => setNewProduct({...newProduct, stock: Number(e.target.value)})} 
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setNewProduct({...newProduct, stock: (newProduct.stock || 0) + 1})}
+                        className="w-6 h-6 flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg text-xs font-black transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+
+                  {/* سعر التكلفة */}
+                  <div className="space-y-1 text-right bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <label className="text-[10px] font-black text-slate-500 block">🏷️ التكلفة (عليك)</label>
+                    <input 
+                      type="number" 
+                      inputMode="decimal"
+                      placeholder="0" 
+                      required 
+                      className="w-full py-0.5 text-center font-black text-sm sm:text-base text-slate-700 dark:text-slate-200 bg-transparent outline-none" 
+                      value={newProduct.cost ?? ''} 
+                      onChange={e => setNewProduct({...newProduct, cost: Number(e.target.value)})} 
+                    />
+                  </div>
+
+                  {/* سعر البيع للزبون */}
+                  <div className="space-y-1 text-right bg-emerald-50/60 dark:bg-emerald-950/30 p-2 rounded-xl border border-emerald-200/80 dark:border-emerald-800/40">
+                    <label className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 block">💵 سعر البيع</label>
+                    <input 
+                      type="number" 
+                      inputMode="decimal"
+                      placeholder="0" 
+                      required 
+                      className="w-full py-0.5 text-center font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400 bg-transparent outline-none" 
+                      value={newProduct.price ?? ''} 
+                      onChange={e => setNewProduct({...newProduct, price: Number(e.target.value)})} 
+                    />
+                  </div>
+
+                  {/* سعر الجملة */}
+                  <div className="space-y-1 text-right bg-blue-50/60 dark:bg-blue-950/30 p-2 rounded-xl border border-blue-200/80 dark:border-blue-800/40">
+                    <label className="text-[10px] font-black text-blue-700 dark:text-blue-400 block">🏬 سعر الجملة</label>
+                    <input 
+                      type="number" 
+                      inputMode="decimal"
+                      placeholder="0" 
+                      className="w-full py-0.5 text-center font-black text-sm sm:text-base text-blue-600 dark:text-blue-400 bg-transparent outline-none" 
+                      value={newProduct.wholesale_price ?? ''} 
+                      onChange={e => setNewProduct({...newProduct, wholesale_price: Number(e.target.value)})} 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: التصنيفات والمجموعات (مدمجة وسلسة) */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2.5">
+                
+                {/* 1. اختر نوع البضاعة (المجموعة الرئيسية) */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">1. نوع البضاعة:</span>
+                  <div className="grid grid-cols-3 gap-2">
                     {GROUPS.map(group => (
                       <button
                         key={group.id}
                         type="button"
                         onClick={() => setActiveGroup(group.id as any)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all border-2 ${
+                        className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl transition-all font-black text-xs border ${
                           activeGroup === group.id 
-                            ? 'bg-white dark:bg-slate-700 border-indigo-500 shadow-md scale-105' 
-                            : 'bg-transparent border-transparent text-slate-400 hover:text-slate-600'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20' 
+                            : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300'
                         }`}
                       >
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${activeGroup === group.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600' : 'bg-slate-100 dark:bg-slate-800'}`}>
-                          {group.icon}
-                        </div>
-                        <span className="font-black text-[10px]">{group.label}</span>
+                        <span className="text-base">{group.icon}</span>
+                        <span>{group.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">2. اختر التصنيف الفرعي</span>
-                    <span className="text-[9px] text-slate-400">تظهر هنا الأصناف التي أضفتها</span>
+                {/* 2. اختر التصنيف الفرعي */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-indigo-500">2. التصنيف الفرعي:</span>
+                    <span className="text-[9px] text-slate-400 font-bold">اختر صنفاً</span>
                   </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto no-scrollbar p-0.5">
                     {getGroupCategories(activeGroup).map(cat => (
                       <button
                         key={cat}
                         type="button"
                         onClick={() => setNewProduct({...newProduct, category: cat})}
-                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 group relative overflow-hidden ${
+                        className={`p-2 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 text-center relative ${
                           newProduct.category === cat 
-                            ? 'border-indigo-500 bg-white dark:bg-slate-800 shadow-lg scale-[1.02]' 
-                            : 'border-slate-50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 hover:border-indigo-200'
+                            ? 'border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/60 shadow-sm ring-1 ring-indigo-500' 
+                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-200'
                         }`}
                       >
                         {newProduct.category === cat && (
-                          <div className="absolute top-0 right-0 p-1.5 bg-indigo-500 text-white rounded-bl-xl shadow-sm">
+                          <div className="absolute top-1 right-1 text-indigo-600 dark:text-indigo-400">
                             <CheckCircle2 size={12} />
                           </div>
                         )}
-                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110 ${
-                          newProduct.category === cat ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-slate-100 dark:bg-slate-800'
-                        }`}>
-                          {CATEGORY_ICONS[cat] || '📦'}
-                        </div>
-                        <span className={`font-black text-[10px] text-center leading-tight ${newProduct.category === cat ? 'text-indigo-600' : 'text-slate-500'}`}>
+                        <span className="text-lg leading-none">{CATEGORY_ICONS[cat] || '📦'}</span>
+                        <span className={`font-black text-[10px] leading-tight truncate w-full ${newProduct.category === cat ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
                           {getCategoryLabel(cat)}
                         </span>
                       </button>
                     ))}
-                    
-                    {/* Quick Add Helper */}
+
+                    {/* Quick Add Button */}
                     <button 
                       type="button"
                       onClick={() => setShowCatManager(true)}
-                      className="p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-2 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all group"
+                      className="p-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all active:scale-95"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                        <Plus size={20} />
-                      </div>
+                      <Plus size={16} />
                       <span className="font-black text-[9px]">أضف تصنيف</span>
                     </button>
                   </div>
                 </div>
+
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 pt-8 border-t dark:border-slate-800">
-                <button 
-                  type="button" 
-                  onClick={closeModal} 
-                  className="w-full sm:w-auto px-8 py-4 text-slate-500 font-black hover:text-slate-800 dark:hover:text-white transition-colors order-2 sm:order-1"
-                >
-                  إلغاء
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={isSaving}
-                  className="w-full sm:w-auto bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2 order-1 sm:order-2"
-                >
-                  {isSaving ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : <CheckCircle2 size={20} />}
-                  {editingId ? 'حفظ التعديلات' : 'إضافة للمخزن'}
-                </button>
-              </div>
             </form>
+
+            {/* Sticky Bottom Action Bar */}
+            <div className="sticky bottom-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2.5 z-20">
+              <button 
+                type="button" 
+                onClick={closeModal} 
+                className="flex-1 py-3 text-slate-500 font-black text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all text-center"
+              >
+                إلغاء
+              </button>
+              <button 
+                type="submit" 
+                form="product-form"
+                disabled={isSaving}
+                className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm sm:text-base rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {isSaving ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : <CheckCircle2 size={18} />}
+                <span>{editingId ? 'حفظ التعديلات' : 'إضافة للمخزن'}</span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}
