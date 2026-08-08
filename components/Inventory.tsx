@@ -94,7 +94,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               justify-content: center;
               overflow: hidden;
               box-sizing: border-box;
-              padding: 1px 1px 1px 4mm;
+              padding: 1px 1px 1px 8mm;
               page-break-inside: avoid !important;
               page-break-after: avoid !important;
               break-after: avoid !important;
