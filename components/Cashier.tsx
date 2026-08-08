@@ -277,27 +277,49 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     let lastKeyTime = Date.now();
 
     const handleBarcodeKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT') return;
+      if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
 
       const currentTime = Date.now();
-      if (currentTime - lastKeyTime > 50) {
-        barcodeBuffer = '';
-      }
+      const timeDiff = currentTime - lastKeyTime;
       lastKeyTime = currentTime;
+
+      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+      const isSearchInput = document.activeElement === searchInputRef.current;
+      
+      if (isInput && !isSearchInput) {
+        if (timeDiff > 35) {
+          barcodeBuffer = '';
+          return;
+        }
+      }
 
       if (e.key.length === 1) {
         barcodeBuffer += e.key;
       } else if (e.key === 'Enter') {
         if (barcodeBuffer.length > 2) {
           e.preventDefault();
+          e.stopPropagation();
           const barcode = barcodeBuffer.trim();
           console.log('Scanned barcode:', barcode);
           
-          // Match product by ID (barcode) or containing barcode in name
+          if (isSearchInput && searchInputRef.current) {
+            searchInputRef.current.value = '';
+            setSearchTerm('');
+          }
+
           const matched = products.find(p => p.id === barcode || p.name.includes(barcode));
           if (matched) {
             addToCart(matched);
-            toast.success(`تم إضافة: ${matched.name}`);
+            toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
+            try {
+              const context = new AudioContext();
+              const osc = context.createOscillator();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(800, context.currentTime);
+              osc.connect(context.destination);
+              osc.start();
+              osc.stop(context.currentTime + 0.1);
+            } catch (ev) {}
           } else {
             toast.error(`لم يتم العثور على صنف بالباركود: ${barcode}`);
           }
@@ -306,8 +328,8 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
       }
     };
 
-    window.addEventListener('keydown', handleBarcodeKeyDown);
-    return () => window.removeEventListener('keydown', handleBarcodeKeyDown);
+    window.addEventListener('keydown', handleBarcodeKeyDown, true);
+    return () => window.removeEventListener('keydown', handleBarcodeKeyDown, true);
   }, [products]);
 
   // Camera Barcode Scanner Hook
@@ -333,6 +355,9 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
         formatsToSupport: formatsToSupport,
         qrbox: (width, height) => {
           return { width: Math.min(width * 0.8, 300), height: 120 };
+        },
+        videoConstraints: {
+          facingMode: "environment"
         }
       },
       false

@@ -325,6 +325,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         formatsToSupport: formatsToSupport,
         qrbox: (width, height) => {
           return { width: Math.min(width * 0.8, 300), height: 120 };
+        },
+        videoConstraints: {
+          facingMode: "environment"
         }
       },
       false
