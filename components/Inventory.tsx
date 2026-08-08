@@ -1,9 +1,9 @@
-
-import React, { useState, useMemo } from 'react';
-import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2, Camera, Scan, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface InventoryProps {
   products: Product[];
@@ -28,6 +28,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     imei: '',
     barcode: ''
   });
+
+  const [isFormCameraOpen, setIsFormCameraOpen] = useState(false);
+  const formScannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const CATEGORY_ICONS: Record<string, string> = {
     phone: '📱',
@@ -297,6 +300,84 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Camera Barcode Scanner for Form Hook
+  useEffect(() => {
+    if (!isFormCameraOpen) return;
+
+    const scanner = new Html5QrcodeScanner(
+      "form-reader",
+      { 
+        fps: 10, 
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0] // Camera scan type only
+      },
+      false
+    );
+    formScannerRef.current = scanner;
+
+    const onScanSuccess = (decodedText: string) => {
+      setNewProduct(prev => ({ ...prev, barcode: decodedText }));
+      toast.success(`تم قراءة الباركود: ${decodedText}`);
+      
+      scanner.clear().then(() => {
+        setIsFormCameraOpen(false);
+      }).catch(err => {
+        console.error("Failed to clear form scanner on success", err);
+        setIsFormCameraOpen(false);
+      });
+    };
+
+    scanner.render(onScanSuccess, () => {});
+
+    return () => {
+      if (formScannerRef.current) {
+        formScannerRef.current.clear().catch(err => {
+          console.error("Cleanup error for form scanner", err);
+        });
+        formScannerRef.current = null;
+      }
+    };
+  }, [isFormCameraOpen]);
+
+  const handleGenerateBarcode = () => {
+    const category = newProduct.category || 'accessory';
+    
+    const prefixes: Record<string, string> = {
+      phone: '10',
+      charger: '20',
+      cable: '30',
+      wired_earphone: '40',
+      bluetooth_earphone: '41',
+      headphone: '42',
+      accessory: '43',
+      part: '50',
+      electronic: '90'
+    };
+    
+    const prefix = prefixes[category] || '99';
+    
+    const barcodes = (products || [])
+      .filter(p => p.category === category)
+      .map(p => {
+        const match = p.name.match(/Barcode:\s*(\d+)/i);
+        return match ? parseInt(match[1]) : null;
+      })
+      .filter((v): v is number => v !== null);
+
+    let nextNumber = 1001; // Start sequence
+    if (barcodes.length > 0) {
+      const maxVal = Math.max(...barcodes);
+      const prefixNum = parseInt(prefix) * 10000;
+      if (maxVal >= prefixNum) {
+        nextNumber = (maxVal - prefixNum) + 1;
+      }
+    }
+
+    const generatedBarcode = `${prefix}${String(nextNumber).padStart(4, '0')}`;
+    setNewProduct(prev => ({ ...prev, barcode: generatedBarcode }));
+    toast.success(`تم توليد باركود تلقائي للقسم: ${generatedBarcode}`);
   };
 
   const closeModal = () => {
@@ -586,7 +667,25 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                   />
                 </div>
                 <div className="space-y-2 text-right">
-                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">رمز الباركود (Barcode)</label>
+                  <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest flex justify-between items-center">
+                    <span>رمز الباركود (Barcode)</span>
+                    <div className="flex gap-2">
+                      <button 
+                        type="button" 
+                        onClick={handleGenerateBarcode}
+                        className="text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1 rounded-lg font-black hover:bg-indigo-100 transition-colors"
+                      >
+                        ⚡ توليد تلقائي للقسم
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setIsFormCameraOpen(true)}
+                        className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg font-black hover:bg-blue-100 transition-colors flex items-center gap-1"
+                      >
+                        📷 قراءة بالكاميرا
+                      </button>
+                    </div>
+                  </label>
                   <input 
                     placeholder="امسح أو اكتب الباركود للمنتج..." 
                     className="w-full p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-right font-bold text-lg focus:border-indigo-500 outline-none transition-all" 
@@ -822,6 +921,37 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
           )}
         </div>
       </div>
+      {/* Camera Barcode Scanner Modal for Form */}
+      {isFormCameraOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md font-['Cairo']" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl text-right space-y-6 animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                📷 قارئ باركود الكاميرا (للمخزن)
+              </h3>
+              <button 
+                onClick={() => setIsFormCameraOpen(false)}
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-red-500 rounded-xl transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <p className="text-xs text-slate-400 font-bold">يرجى السماح بالوصول للكاميرا ووضع الباركود أمام العدسة لقراءته.</p>
+            
+            <div className="bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-inner min-h-[300px] flex items-center justify-center text-white">
+              <div id="form-reader" className="w-full"></div>
+            </div>
+            
+            <button
+              onClick={() => setIsFormCameraOpen(false)}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl transition-all text-sm"
+            >
+              إلغاء وإغلاق
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
