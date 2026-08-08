@@ -9,9 +9,10 @@ interface InventoryProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   shopId: string | null;
+  shopName?: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) => {
+const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, shopName }) => {
   const playBeepSound = () => {
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -79,28 +80,31 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              font-family: Arial, sans-serif;
+              font-family: 'Segoe UI', Arial, sans-serif;
               overflow: hidden;
               background: white;
               color: black;
               text-align: center;
               box-sizing: border-box;
-              padding: 1px;
+              padding: 2px 1px;
             }
             .store-name {
-              font-size: 7px;
-              font-weight: bold;
-              margin-bottom: 0px;
+              font-size: 10px;
+              font-weight: 900;
+              margin-bottom: 2px;
               white-space: nowrap;
               overflow: hidden;
+              text-overflow: ellipsis;
               width: 100%;
+              text-transform: uppercase;
             }
             .product-name {
-              font-size: 8px;
-              font-weight: bold;
-              margin-bottom: 1px;
+              font-size: 11px;
+              font-weight: 900;
+              margin-bottom: 3px;
               white-space: nowrap;
               overflow: hidden;
+              text-overflow: ellipsis;
               width: 100%;
             }
             .barcode-container {
@@ -110,19 +114,19 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
               align-items: center;
             }
             #barcode-elem {
-              max-width: 100%;
-              height: 38px;
+              max-width: 95%;
+              height: 40px;
             }
             .price {
-              font-size: 8px;
-              font-weight: bold;
-              margin-top: 0px;
+              font-size: 11px;
+              font-weight: 900;
+              margin-top: 1px;
             }
           </style>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
         </head>
         <body>
-          <div class="store-name">مدير المحل الذكي</div>
+          <div class="store-name">${shopName || 'محل موبايلات'}</div>
           <div class="product-name">${displayName}</div>
           <div class="barcode-container">
             <svg id="barcode-elem"></svg>
@@ -133,10 +137,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
               try {
                 JsBarcode("#barcode-elem", "${barcode}", {
                   format: "CODE128",
-                  width: 1.1,
-                  height: 25,
+                  width: 1.3,
+                  height: 30,
                   displayValue: true,
-                  fontSize: 8,
+                  fontSize: 10,
+                  fontOptions: "bold",
                   margin: 0
                 });
                 setTimeout(() => {

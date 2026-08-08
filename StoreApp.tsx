@@ -620,7 +620,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           <div className="max-w-6xl mx-auto pb-20 lg:pb-0">
             {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
             {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} />}
-            {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} />}
+            {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} shopName={shopName} />}
             {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
             { activeSection === 'reports' && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
             { activeSection === 'debts' && <Debts shopId={shopId} addTransaction={addTransaction} /> }
