@@ -23,7 +23,8 @@ import {
   X,
   CheckCircle2,
   Search,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
 import { MaintenanceJob, Transaction, Product, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
@@ -43,6 +44,7 @@ interface MaintenanceCenterProps {
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   userRole: UserRole;
   shopId: string | null;
+  shopName?: string;
 }
 
 const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({ 
@@ -52,7 +54,8 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   products, 
   setProducts,
   userRole,
-  shopId
+  shopId,
+  shopName
 }) => {
   const [activeTab, setActiveTab] = useState<'workshop' | 'pos' | 'parts' | 'parts_sale' | 'quick'>('workshop');
   const [showAddJob, setShowAddJob] = useState(false);
@@ -191,6 +194,158 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     else toast(message);
   };
 
+  const handlePrintDeviceSticker = (job: MaintenanceJob) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة (Popups) للتمكن من طباعة الاستيكر');
+      return;
+    }
+
+    const cleanPhone = getCleanPhone(job.customerPhone);
+    const trackingCode = getTrackingCode(job.customerPhone) || job.id.slice(0, 5);
+    const issueText = job.issue || 'فحص وصيانة';
+    const cleanCustomerName = job.customerName || 'عميل';
+    const phoneModel = job.phoneModel || 'هاتف';
+    const costText = `${job.cost} ج`;
+    const paidText = job.paidAmount > 0 ? ` (مقدم: ${job.paidAmount}ج)` : '';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>استيكر جهاز - ${job.phoneModel}</title>
+          <style>
+            @page {
+              size: 38mm 25mm;
+              margin: 0 !important;
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            html, body {
+              width: 38mm;
+              height: 25mm;
+              overflow: hidden;
+              background: white;
+              color: black;
+              font-family: system-ui, -apple-system, sans-serif;
+            }
+            .label-wrapper {
+              width: 38mm;
+              height: 25mm;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: flex-start;
+              padding: 1mm 1.5mm 0.5mm 1.5mm;
+              text-align: center;
+            }
+            .store-name {
+              font-size: 11px;
+              font-weight: 900;
+              text-align: center;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              line-height: 1.2;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 1px;
+              margin-bottom: 1px;
+            }
+            .device-row {
+              font-size: 8.5px;
+              font-weight: 900;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              line-height: 1.2;
+            }
+            .customer-row {
+              font-size: 7.5px;
+              font-weight: 700;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              line-height: 1.1;
+            }
+            .issue-row {
+              font-size: 8px;
+              font-weight: 900;
+              width: 100%;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              background: #000;
+              color: #fff;
+              padding: 0.5px 2px;
+              border-radius: 2px;
+              margin: 1px 0;
+              line-height: 1.2;
+            }
+            .barcode-container {
+              width: 100%;
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            #barcode-elem {
+              width: 100%;
+            }
+            .footer-row {
+              font-size: 7.5px;
+              font-weight: 900;
+              width: 100%;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              line-height: 1;
+              padding-bottom: 0.5mm;
+            }
+          </style>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+        </head>
+        <body>
+          <div class="label-wrapper">
+            <div class="store-name">${shopName || 'مدير الصيانة الذكي'}</div>
+            <div class="device-row">📱 ${phoneModel}</div>
+            <div class="customer-row">👤 ${cleanCustomerName} ${cleanPhone ? `(${cleanPhone})` : ''}</div>
+            <div class="issue-row">🔧 عطل: ${issueText}</div>
+            <div class="barcode-container">
+              <svg id="barcode-elem"></svg>
+            </div>
+            <div class="footer-row">
+              <span>كود: ${trackingCode}</span>
+              <span>حساب: ${costText}${paidText}</span>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              try {
+                var code = "${trackingCode}";
+                JsBarcode("#barcode-elem", code, {
+                  format: "CODE128",
+                  width: 1.6,
+                  height: 18,
+                  displayValue: false,
+                  margin: 0
+                });
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 400);
+              } catch (e) {
+                console.error(e);
+                window.close();
+              }
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shopId) return;
@@ -228,6 +383,8 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
         setShowAddJob(false);
         setJobForm({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
         addNotification(`جهاز جديد وصل الورشة: ${newJob.phoneModel}`, 'info');
+        toast.success('تم تسجيل الجهاز بنجاح! جاري فتح استيكر الطباعة...');
+        handlePrintDeviceSticker(newJob);
         if (userRole === 'OWNER' || userRole === 'MANAGER') setActiveTab('workshop');
       } else if (error) {
         toast.error('فشل حفظ بيانات الجهاز في السحابة!');
@@ -666,7 +823,17 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                          </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                         <div className="text-base font-black text-blue-600 bg-blue-50 px-4 py-1.5 rounded-full">{job.cost} ج</div>
+                         <div className="flex items-center gap-2">
+                           <button 
+                             onClick={() => handlePrintDeviceSticker(job)}
+                             className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full font-black text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                             title="طباعة استيكر للصقه على الموبايل"
+                           >
+                             <Printer size={14} />
+                             <span>استيكر الجهاز</span>
+                           </button>
+                           <div className="text-base font-black text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-4 py-1.5 rounded-full">{job.cost} ج</div>
+                         </div>
                          <select value={job.status} disabled={userRole === 'CASHIER'} onChange={e => updateJobStatus(job.id, e.target.value as any)} className={`text-xs p-2.5 rounded-xl border-none font-black shadow-sm outline-none transition-all appearance-none text-center min-w-[150px] ${job.status === 'pending' ? 'bg-amber-100 text-amber-700' : job.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-600 text-white shadow-lg'}`}>
                             <option value="pending">⏳ لسه مستني الشغل</option>
                             <option value="in-progress">⚙️ شغالين فيه دلوقتي</option>
@@ -1137,6 +1304,13 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                    <div className="p-7 flex-1 space-y-5">
                      <div className="flex items-center justify-between">
                         <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1"><CheckCircle size={12}/> خلص وجاهز للتسليم</span>
+                        <button 
+                          onClick={() => handlePrintDeviceSticker(job)} 
+                          className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-xl transition-all"
+                          title="طباعة استيكر الموبايل"
+                        >
+                          <Printer size={16} />
+                        </button>
                      </div>
                      <div className="flex items-center gap-4 text-right font-black text-slate-800 dark:text-white text-xl leading-tight">{job.phoneModel}</div>
                      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-[11px] font-bold text-right text-slate-600">
