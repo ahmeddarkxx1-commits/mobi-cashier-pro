@@ -72,51 +72,54 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               size: 38mm 25mm;
               margin: 0 !important;
             }
-            body {
-              margin: 0;
-              padding: 0;
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 38mm;
+              height: 23mm;
+              overflow: hidden;
+              background: white;
+              color: black;
+              box-sizing: border-box;
+            }
+            .label-wrapper {
               width: 38mm;
               height: 23mm;
               display: flex;
               flex-direction: column;
               align-items: center;
               justify-content: center;
-              font-family: 'Segoe UI', Arial, sans-serif;
               overflow: hidden;
-              background: white;
-              color: black;
-              text-align: center;
               box-sizing: border-box;
-            }
-            @media print {
-              html, body {
-                width: 38mm;
-                height: 23mm;
-                overflow: hidden;
-              }
+              padding: 1px;
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+              break-after: avoid !important;
             }
             .store-name {
-              font-size: 9px;
+              font-size: 8px;
               font-weight: 900;
-              line-height: 1.1;
-              margin: 0;
+              line-height: 1.0;
+              margin: 0 0 1px 0;
               padding: 0;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
               width: 100%;
               text-transform: uppercase;
+              text-align: center;
             }
             .product-name {
-              font-size: 10px;
+              font-size: 9px;
               font-weight: 900;
-              line-height: 1.1;
-              margin: 2px 0 1px 0;
+              line-height: 1.0;
+              margin: 1px 0;
               padding: 0;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
               width: 100%;
+              text-align: center;
             }
             .barcode-container {
               width: 100%;
@@ -125,37 +128,42 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               align-items: center;
               margin: 0;
               padding: 0;
+              height: 28px;
+              overflow: hidden;
             }
             #barcode-elem {
               max-width: 95%;
-              height: 30px;
+              height: 28px;
             }
             .price {
-              font-size: 10px;
+              font-size: 9px;
               font-weight: 900;
-              line-height: 1.1;
+              line-height: 1.0;
               margin: 1px 0 0 0;
               padding: 0;
+              text-align: center;
             }
           </style>
           <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
         </head>
         <body>
-          <div class="store-name">${shopName || 'محل موبايلات'}</div>
-          <div class="product-name">${displayName}</div>
-          <div class="barcode-container">
-            <svg id="barcode-elem"></svg>
+          <div class="label-wrapper">
+            <div class="store-name">${shopName || 'محل موبايلات'}</div>
+            <div class="product-name">${displayName}</div>
+            <div class="barcode-container">
+              <svg id="barcode-elem"></svg>
+            </div>
+            <div class="price">السعر: ${product.price} ج</div>
           </div>
-          <div class="price">السعر: ${product.price} ج</div>
           <script>
             window.onload = function() {
               try {
                 JsBarcode("#barcode-elem", "${barcode}", {
                   format: "CODE128",
-                  width: 1.2,
-                  height: 20,
+                  width: 1.1,
+                  height: 18,
                   displayValue: true,
-                  fontSize: 9,
+                  fontSize: 8,
                   fontOptions: "bold",
                   margin: 0
                 });
