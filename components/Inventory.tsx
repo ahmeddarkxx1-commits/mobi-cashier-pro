@@ -165,10 +165,10 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
               try {
                 JsBarcode("#barcode-elem", "${barcode}", {
                   format: "CODE128",
-                  width: 3,
-                  height: 40,
+                  width: 4,
+                  height: 50,
                   displayValue: true,
-                  fontSize: 16,
+                  fontSize: 20,
                   fontOptions: "bold",
                   margin: 0
                 });
