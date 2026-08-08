@@ -2,13 +2,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
-import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, X, Smartphone, ArrowRightLeft, Zap, Banknote, Laptop, Headset, UserPlus, Package } from 'lucide-react';
+import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, X, Smartphone, ArrowRightLeft, Zap, Banknote, Laptop, Headset, UserPlus, Package, Camera } from 'lucide-react';
 import { Product, Transaction, TransferSetting } from '../types';
 import BalanceTransfer from './BalanceTransfer';
 import BalanceRecharge from './BalanceRecharge';
 import { updateProductStock, createDebt } from '../supabaseHelpers';
 import MissingGoods from './MissingGoods';
 import { AlertCircle } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CashierProps {
   products: Product[];
@@ -41,6 +42,9 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<any>(null);
+
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const [customCategories, setCustomCategories] = useState<string[]>(['phone', 'charger', 'cable', 'accessory']);
   const [partCategories, setPartCategories] = useState<string[]>(['part', 'شاشات', 'فلاتات', 'بطاريات']);
@@ -306,6 +310,59 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     return () => window.removeEventListener('keydown', handleBarcodeKeyDown);
   }, [products]);
 
+  // Camera Barcode Scanner Hook
+  useEffect(() => {
+    if (!isCameraScannerOpen) return;
+
+    const scanner = new Html5QrcodeScanner(
+      "reader",
+      { 
+        fps: 10, 
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [0] // Camera scan type only
+      },
+      false
+    );
+    scannerRef.current = scanner;
+
+    const onScanSuccess = (decodedText: string) => {
+      const matched = products.find(p => p.id === decodedText || p.name.includes(decodedText));
+      if (matched) {
+        addToCart(matched);
+        toast.success(`تم إضافة: ${getCleanName(matched.name)}`);
+        try {
+          const context = new AudioContext();
+          const osc = context.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, context.currentTime);
+          osc.connect(context.destination);
+          osc.start();
+          osc.stop(context.currentTime + 0.1);
+        } catch (e) {}
+      } else {
+        toast.error(`لم يتم العثور على صنف بالباركود: ${decodedText}`);
+      }
+      
+      scanner.clear().then(() => {
+        setIsCameraScannerOpen(false);
+      }).catch(err => {
+        console.error("Failed to clear scanner on success", err);
+        setIsCameraScannerOpen(false);
+      });
+    };
+
+    scanner.render(onScanSuccess, () => {});
+
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(err => {
+          console.error("Cleanup error for html5-qrcode", err);
+        });
+        scannerRef.current = null;
+      }
+    };
+  }, [isCameraScannerOpen, products]);
+
   const handlePrintInvoice = () => {
     if (!completedInvoice) return;
     const printWindow = window.open('', '_blank', 'width=600,height=600');
@@ -539,16 +596,26 @@ ${completedInvoice.customerName ? `*العميل:* ${completedInvoice.customerNa
             </div>
           </div>
 
-          <div className="relative group">
-            <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={24} />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="دور على البضاعة اللي عايز تبيعها.. (اضغط F2 للبحث السريع)"
-              className="w-full pr-14 pl-6 py-5 rounded-3xl border border-gray-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition-all shadow-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-black text-lg"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex gap-3">
+            <div className="relative flex-1 group">
+              <Search className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={24} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="دور على البضاعة اللي عايز تبيعها.. (اضغط F2 للبحث السريع)"
+                className="w-full pr-14 pl-6 py-5 rounded-3xl border border-gray-200 dark:border-slate-800 focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:border-blue-500 outline-none transition-all shadow-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white font-black text-lg"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button 
+              type="button"
+              onClick={() => setIsCameraScannerOpen(true)}
+              title="فتح كاميرا الهاتف لمسح الباركود"
+              className="p-5 bg-blue-50 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 rounded-3xl border border-gray-100 dark:border-slate-800 transition-colors flex items-center justify-center shrink-0 min-w-[60px]"
+            >
+              <Camera size={26} />
+            </button>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-6">
@@ -775,6 +842,38 @@ ${completedInvoice.customerName ? `*العميل:* ${completedInvoice.customerNa
               className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all text-xs border border-slate-750"
             >
               إغلاق
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Barcode Scanner Modal */}
+      {isCameraScannerOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md font-['Cairo']" dir="rtl">
+          <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl text-right space-y-6 animate-in zoom-in duration-300">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <h3 className="text-xl font-black text-white flex items-center gap-2">
+                📷 قارئ باركود الكاميرا
+              </h3>
+              <button 
+                onClick={() => setIsCameraScannerOpen(false)}
+                className="p-2 hover:bg-slate-800 text-slate-400 hover:text-red-500 rounded-xl transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <p className="text-xs text-slate-400 font-bold">يرجى السماح بالوصول للكاميرا ووضع الباركود أمام العدسة لقراءته.</p>
+            
+            <div className="bg-black rounded-3xl overflow-hidden border border-slate-800 shadow-inner min-h-[300px] flex items-center justify-center text-white">
+              <div id="reader" className="w-full"></div>
+            </div>
+            
+            <button
+              onClick={() => setIsCameraScannerOpen(false)}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl transition-all text-sm"
+            >
+              إلغاء وإغلاق
             </button>
           </div>
         </div>
