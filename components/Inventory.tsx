@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2, Camera, Scan, Sparkles } from 'lucide-react';
+import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2, Camera, Scan, Sparkles, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
@@ -34,6 +34,125 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
     } catch (e) {
       console.error("Audio beep failed", e);
     }
+  };
+
+  const handlePrintBarcode = (product: Product) => {
+    let displayName = product.name;
+    let barcode = '';
+
+    // Parse Barcode
+    const barcodeMatch = displayName.match(/(.+)\s*-\s*Barcode:\s*(\w+)/i);
+    if (barcodeMatch) {
+      displayName = barcodeMatch[1].trim();
+      barcode = barcodeMatch[2].trim();
+    } else {
+      toast.error('هذا المنتج لا يحتوي على باركود لطباعته!');
+      return;
+    }
+
+    // Clean IMEI suffix if present in name too
+    const imeiMatch = displayName.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
+    if (imeiMatch) {
+      displayName = imeiMatch[1].trim();
+    }
+
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة (Popups) للتمكن من الطباعة');
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>طباعة باركود - ${displayName}</title>
+          <style>
+            @page {
+              size: 38mm 25mm;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              width: 38mm;
+              height: 25mm;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              font-family: Arial, sans-serif;
+              overflow: hidden;
+              background: white;
+              color: black;
+              text-align: center;
+              box-sizing: border-box;
+              padding: 1px;
+            }
+            .store-name {
+              font-size: 7px;
+              font-weight: bold;
+              margin-bottom: 0px;
+              white-space: nowrap;
+              overflow: hidden;
+              width: 100%;
+            }
+            .product-name {
+              font-size: 8px;
+              font-weight: bold;
+              margin-bottom: 1px;
+              white-space: nowrap;
+              overflow: hidden;
+              width: 100%;
+            }
+            .barcode-container {
+              width: 100%;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            #barcode-elem {
+              max-width: 100%;
+              height: 38px;
+            }
+            .price {
+              font-size: 8px;
+              font-weight: bold;
+              margin-top: 0px;
+            }
+          </style>
+          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+        </head>
+        <body>
+          <div class="store-name">مدير المحل الذكي</div>
+          <div class="product-name">${displayName}</div>
+          <div class="barcode-container">
+            <svg id="barcode-elem"></svg>
+          </div>
+          <div class="price">السعر: ${product.price} ج</div>
+          <script>
+            window.onload = function() {
+              try {
+                JsBarcode("#barcode-elem", "${barcode}", {
+                  format: "CODE128",
+                  width: 1.1,
+                  height: 25,
+                  displayValue: true,
+                  fontSize: 8,
+                  margin: 0
+                });
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 400);
+              } catch (e) {
+                console.error(e);
+                window.close();
+              }
+            };
+          <\/script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -315,6 +434,9 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
         if (productData) {
           setProducts(prev => [...prev, productData as any]);
           toast.success('تم إضافة المنتج الجديد بنجاح');
+          if (newProduct.barcode) {
+            handlePrintBarcode(productData as any);
+          }
         }
       }
       closeModal();
@@ -918,12 +1040,17 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId }) 
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex gap-2">
-                       <button onClick={() => deleteProduct(product.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                       <button onClick={() => deleteProduct(product.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" title="حذف الصنف">
                         <Trash2 size={16} />
                       </button>
-                      <button onClick={() => startEdit(product)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                      <button onClick={() => startEdit(product)} className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all" title="تعديل الصنف">
                         <Edit size={16} />
                       </button>
+                      {product.name.includes('- Barcode:') && (
+                        <button onClick={() => handlePrintBarcode(product)} className="p-2 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all" title="طباعة ملصق الباركود حراري">
+                          <Printer size={16} />
+                        </button>
+                      )}
                     </div>
                     <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] px-3 py-1 rounded-full font-black">
                       {getCategoryLabel(product.category)}
