@@ -1074,8 +1074,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
                   </div>
 
                   <div className="text-right space-y-1 mb-4">
-                    <div className="font-black text-slate-800 dark:text-white text-base truncate" title={product.name}>
-                      {product.name}
+                    <div className="font-black text-slate-800 dark:text-white text-base truncate" title={product.name.replace(/\s*-\s*Barcode:\s*\S+/i, '').replace(/\s*-\s*IMEI:\s*\S+/i, '').trim()}>
+                      {product.name.replace(/\s*-\s*Barcode:\s*\S+/i, '').replace(/\s*-\s*IMEI:\s*\S+/i, '').trim()}
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <div className="flex items-center justify-end gap-3 bg-slate-50 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
