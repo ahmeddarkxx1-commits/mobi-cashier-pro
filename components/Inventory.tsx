@@ -1068,10 +1068,36 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       )}
 
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
-        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-4 transition-colors duration-300">
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 flex flex-col gap-4 transition-colors duration-300">
           <div className="relative flex-1 w-full">
             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="دور على البضاعة اللي عندك..." className="w-full pr-12 pl-4 py-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-right font-bold transition-colors duration-300" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="دور على البضاعة اللي عندك..." className="w-full pr-12 pl-4 py-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-right font-bold transition-colors duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                filter === 'all' 
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              الكل
+            </button>
+            {Array.from(new Set((products || []).map(p => p.category))).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilter(cat)}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  filter === cat 
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {getCategoryLabel(cat)}
+              </button>
+            ))}
           </div>
         </div>
 
