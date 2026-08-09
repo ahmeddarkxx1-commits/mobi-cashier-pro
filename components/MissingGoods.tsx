@@ -322,12 +322,15 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
         }
       }
 
-      // 2. Remove automatic products that now have stock > 2
+      // 2. Remove automatic products that now have stock > 2 or were deleted from inventory
       const itemsToRemove = (missingItems || []).filter(item => {
         if (!item.is_automatic) return false;
         const normalizedName = item.name?.trim().toLowerCase();
         const product = products.find(p => p.name?.trim().toLowerCase() === normalizedName);
-        return product && product.stock > 2;
+        
+        // If product no longer exists in inventory (was deleted), or stock increased, remove it
+        if (!product) return true;
+        return product.stock > 2;
       });
 
       for (const item of itemsToRemove) {
