@@ -315,7 +315,26 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
       if (itemsToInsert.length > 0 && isMounted) {
         try {
           const { data, error } = await supabase.from('missing_goods').insert(itemsToInsert).select();
-          if (!error && data && isMounted) {
+          
+          if (error) {
+            const isColumnMissing = 
+              error.message?.includes('column "category" does not exist') || 
+              error.message?.includes("Could not find the 'category' column");
+              
+            if (isColumnMissing) {
+              const itemsWithoutCategory = itemsToInsert.map(({ category, ...rest }) => rest);
+              const { data: retryData, error: retryError } = await supabase.from('missing_goods').insert(itemsWithoutCategory).select();
+              
+              if (!retryError && retryData && isMounted) {
+                setMissingItems(prev => {
+                  const newItems = retryData.filter(d => !prev.some(p => p.id === d.id));
+                  return [...newItems, ...prev];
+                });
+              }
+            } else {
+              throw error;
+            }
+          } else if (data && isMounted) {
             setMissingItems(prev => {
               const newItems = data.filter(d => !prev.some(p => p.id === d.id));
               return [...newItems, ...prev];
