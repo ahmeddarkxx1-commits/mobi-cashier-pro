@@ -227,18 +227,29 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
         }
 
         // 2. Sync Part Categories
+        const defaultParts = ['part', 'شاشات', 'بطاريات', 'هاوسينج'];
         if (currentSettings.part_categories && currentSettings.part_categories.length > 0) {
-          setPartCategories(currentSettings.part_categories);
-          localStorage.setItem(`shop_part_categories_${shopId}`, JSON.stringify(currentSettings.part_categories));
+          const mergedParts = Array.from(new Set([...defaultParts, ...currentSettings.part_categories]));
+          setPartCategories(mergedParts);
+          localStorage.setItem(`shop_part_categories_${shopId}`, JSON.stringify(mergedParts));
+          if (mergedParts.length !== currentSettings.part_categories.length) {
+            newSettings.part_categories = mergedParts;
+            needsUpdate = true;
+          }
         } else {
           const localParts = localStorage.getItem(`shop_part_categories_${shopId}`);
           if (localParts) {
             const parsed = JSON.parse(localParts);
-            if (parsed.length > 0) {
-              setPartCategories(parsed);
-              newSettings.part_categories = parsed;
+            const mergedParts = Array.from(new Set([...defaultParts, ...(parsed || [])]));
+            if (mergedParts.length > 0) {
+              setPartCategories(mergedParts);
+              newSettings.part_categories = mergedParts;
               needsUpdate = true;
             }
+          } else {
+            setPartCategories(defaultParts);
+            newSettings.part_categories = defaultParts;
+            needsUpdate = true;
           }
         }
 
