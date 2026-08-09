@@ -348,7 +348,7 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
 
     syncAutomaticMissing();
     return () => { isMounted = false; };
-  }, [JSON.stringify(products?.map(p => ({ id: p.id, stock: p.stock }))), shopId, loading, missingItems.length]);
+  }, [JSON.stringify(products?.map(p => ({ id: p.id, name: p.name, stock: p.stock, category: p.category }))), shopId, loading, missingItems.length]);
 
   const handleAddManualItem = async (e: React.FormEvent) => {
     e.preventDefault();
