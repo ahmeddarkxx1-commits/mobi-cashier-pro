@@ -289,6 +289,7 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
       const lowStock = (products || []).filter(p => p && p.stock <= 2);
       const pendingNames = new Set<string>();
       
+      // 1. Add low stock products
       for (const product of lowStock) {
         if (!isMounted || !product?.name) continue;
         
@@ -320,11 +321,31 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
           }
         }
       }
+
+      // 2. Remove automatic products that now have stock > 2
+      const itemsToRemove = (missingItems || []).filter(item => {
+        if (!item.is_automatic) return false;
+        const normalizedName = item.name?.trim().toLowerCase();
+        const product = products.find(p => p.name?.trim().toLowerCase() === normalizedName);
+        return product && product.stock > 2;
+      });
+
+      for (const item of itemsToRemove) {
+        if (!isMounted) break;
+        try {
+          const { error } = await supabase.from('missing_goods').delete().eq('id', item.id);
+          if (!error && isMounted) {
+            setMissingItems(prev => prev.filter(p => p.id !== item.id));
+          }
+        } catch (e) {
+          console.error("Sync delete failed", e);
+        }
+      }
     };
 
     syncAutomaticMissing();
     return () => { isMounted = false; };
-  }, [products?.length, shopId, loading]);
+  }, [JSON.stringify(products?.map(p => ({ id: p.id, stock: p.stock }))), shopId, loading, missingItems.length]);
 
   const handleAddManualItem = async (e: React.FormEvent) => {
     e.preventDefault();
