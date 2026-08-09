@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import JsBarcode from 'jsbarcode';
 
 interface InventoryProps {
   products: Product[];
@@ -41,7 +42,6 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
     let displayName = product.name;
     let barcode = '';
 
-    // Parse Barcode
     const barcodeMatch = displayName.match(/(.+)\s*-\s*Barcode:\s*(\w+)/i);
     if (barcodeMatch) {
       displayName = barcodeMatch[1].trim();
@@ -51,125 +51,95 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       return;
     }
 
-    // Clean IMEI suffix if present in name too
     const imeiMatch = displayName.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
-    if (imeiMatch) {
-      displayName = imeiMatch[1].trim();
+    if (imeiMatch) displayName = imeiMatch[1].trim();
+
+    // Render barcode to Canvas then convert to PNG (guaranteed to print on thermal printers)
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(hiddenDiv);
+    const canvas = document.createElement('canvas');
+    hiddenDiv.appendChild(canvas);
+
+    let barcodeDataURL = '';
+    try {
+      const fmt = /^\d{13}$/.test(barcode) ? 'EAN13' : /^\d{8}$/.test(barcode) ? 'EAN8' : 'CODE128';
+      JsBarcode(canvas, barcode, {
+        format: fmt,
+        width: 1.5,
+        height: 18,
+        displayValue: true,
+        fontSize: 13,
+        fontOptions: 'bold',
+        margin: 0,
+        textMargin: 1,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+      barcodeDataURL = canvas.toDataURL('image/png');
+    } catch {
+      try {
+        JsBarcode(canvas, barcode, { format: 'CODE128', width: 1.5, height: 18, displayValue: true, fontSize: 13, margin: 0, background: '#ffffff', lineColor: '#000000' });
+        barcodeDataURL = canvas.toDataURL('image/png');
+      } catch (e) {
+        console.error('Barcode render failed:', e);
+        toast.error('فشل رسم الباركود، تأكد من صحة الرقم');
+        document.body.removeChild(hiddenDiv);
+        return;
+      }
+    }
+    document.body.removeChild(hiddenDiv);
+
+    if (!barcodeDataURL || barcodeDataURL === 'data:,') {
+      toast.error('الباركود فارغ، تأكد من صحة الرقم');
+      return;
     }
 
     const printWindow = window.open('', '_blank', 'width=400,height=300');
     if (!printWindow) {
-      toast.error('يرجى السماح بالنوافذ المنبثقة (Popups) للتمكن من الطباعة');
+      toast.error('يرجى السماح بالنوافذ المنبثقة للطباعة');
       return;
     }
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>باركود - ${displayName}</title>
-          <style>
-            @page {
-              size: 38mm 25mm;
-              margin: 0 !important;
-            }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            html, body {
-              width: 38mm;
-              height: 25mm;
-              overflow: hidden;
-              background: white;
-              color: black;
-            }
-            .label-wrapper {
-              width: 38mm;
-              height: 25mm;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: flex-start;
-              padding: 1mm 1mm 0 1mm;
-            }
-            .store-name {
-              font-size: 17px;
-              font-weight: 900;
-              text-align: center;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.4;
-              padding-bottom: 1px;
-            }
-            .product-name {
-              font-size: 9.5px;
-              font-weight: 700;
-              text-align: center;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.2;
-            }
-            .barcode-container {
-              width: 100%;
-              flex: 1;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            #barcode-elem {
-              width: 100%;
-            }
-            .price {
-              font-size: 10px;
-              font-weight: 900;
-              text-align: center;
-              width: 100%;
-              padding-bottom: 1mm;
-            }
-          </style>
-          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
-        </head>
-        <body>
-          <div class="label-wrapper">
-            <div class="store-name">${shopName || 'محل موبايلات'}</div>
-            <div class="product-name">${displayName}</div>
-            <div class="barcode-container">
-              <svg id="barcode-elem"></svg>
-            </div>
-            <div class="price">السعر: ${product.price} ج</div>
-          </div>
-          <script>
-            window.onload = function() {
-              try {
-                var code = "${barcode}";
-                var fmt = "CODE128";
-                if (/^\d{13}$/.test(code)) fmt = "EAN13";
-                else if (/^\d{8}$/.test(code)) fmt = "EAN8";
-                JsBarcode("#barcode-elem", code, {
-                  format: fmt,
-                  width: 1.5,
-                  height: 25,
-                  displayValue: true,
-                  fontSize: 12,
-                  fontOptions: "bold",
-                  margin: 0
-                });
-                setTimeout(() => {
-                  window.print();
-                  window.close();
-                }, 400);
-              } catch (e) {
-                console.error(e);
-                window.close();
-              }
-            };
-          <\/script>
-        </body>
-      </html>
-    `);
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>باركود</title>
+    <style>
+      @page { size: 38mm 22mm; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
+      .wrap { width: 38mm; height: 22mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 0mm 1mm 3mm 1mm; text-align: center; }
+      .sname { font-size: 9pt; font-weight: 900; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: -1px; margin-top: 1px; }
+      .pname { font-size: 7pt; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: 0px; }
+      .bc { width: 100%; display: flex; align-items: center; justify-content: center; }
+      .bc img { max-width: 100%; height: auto; display: block; }
+      .price { font-size: 8pt; font-weight: 900; text-align: center; width: 100%; line-height: 1; margin-top: -2px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="sname">${shopName || 'محل موبايلات'}</div>
+      <div class="pname">${displayName}</div>
+      <div class="bc"><img src="${barcodeDataURL}" /></div>
+      <div class="price">السعر: ${product.price} ج</div>
+    </div>
+    <script>
+      var _p = false;
+      window.onload = function() {
+        if (_p) return; _p = true;
+        setTimeout(function() { window.print(); }, 500);
+      };
+      window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 300);
+      });
+    </script>
+  </body>
+</html>`);
     printWindow.document.close();
   };
+
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<Product['category'] | 'all'>('all');
@@ -553,22 +523,27 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       .filter(p => p.category === category)
       .map(p => {
         const match = p.name.match(/Barcode:\s*(\d+)/i);
-        return match ? parseInt(match[1]) : null;
+        if (!match) return null;
+        const num = parseInt(match[1]);
+        // Only accept valid integers that are exactly 8 digits and start with our prefix
+        if (!isNaN(num) && Number.isSafeInteger(num) && match[1].length === 8 && match[1].startsWith(prefix)) {
+          return num;
+        }
+        return null;
       })
       .filter((v): v is number => v !== null);
 
-    let nextNumber = 1001; // Start sequence
+    let nextNumber = parseInt(`${prefix}000001`); // Start sequence 8 digits
     if (barcodes.length > 0) {
       const maxVal = Math.max(...barcodes);
-      const prefixNum = parseInt(prefix) * 10000;
-      if (maxVal >= prefixNum) {
-        nextNumber = (maxVal - prefixNum) + 1;
+      if (!isNaN(maxVal) && Number.isSafeInteger(maxVal)) {
+        nextNumber = maxVal + 1;
       }
     }
 
-    const generatedBarcode = `${prefix}${String(nextNumber).padStart(4, '0')}`;
+    const generatedBarcode = String(nextNumber);
     setNewProduct(prev => ({ ...prev, barcode: generatedBarcode }));
-    toast.success(`تم توليد باركود تلقائي للقسم: ${generatedBarcode}`);
+    toast.success(`تم توليد باركود: ${generatedBarcode}`);
   };
 
   const closeModal = () => {

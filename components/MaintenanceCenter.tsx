@@ -26,6 +26,7 @@ import {
   AlertCircle,
   Printer
 } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
 import { MaintenanceJob, Transaction, Product, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
 import { createMaintenanceJob, updateMaintenanceJob, createDebt, updateProductStock } from '../supabaseHelpers';
@@ -188,6 +189,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   useEffect(() => {
     if (activeTab === 'parts_sale') fetchRecentSales();
   }, [activeTab, shopId]);
+  
   const addNotification = (message: string, type: Notification['type'] = 'info') => {
     if (type === 'success') toast.success(message);
     else if (type === 'warning') toast.error(message);
@@ -195,12 +197,6 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   };
 
   const handlePrintDeviceSticker = (job: MaintenanceJob) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=300');
-    if (!printWindow) {
-      toast.error('يرجى السماح بالنوافذ المنبثقة (Popups) للتمكن من طباعة الاستيكر');
-      return;
-    }
-
     const cleanPhone = getCleanPhone(job.customerPhone);
     const trackingCode = getTrackingCode(job.customerPhone) || job.id.slice(0, 5);
     const issueText = job.issue || 'فحص وصيانة';
@@ -209,142 +205,83 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     const costText = `${job.cost} ج`;
     const paidText = job.paidAmount > 0 ? ` (مقدم: ${job.paidAmount}ج)` : '';
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>استيكر جهاز - ${job.phoneModel}</title>
-          <style>
-            @page {
-              size: 38mm 25mm;
-              margin: 0 !important;
-            }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            html, body {
-              width: 38mm;
-              height: 25mm;
-              overflow: hidden;
-              background: white;
-              color: black;
-              font-family: system-ui, -apple-system, sans-serif;
-            }
-            .label-wrapper {
-              width: 38mm;
-              height: 25mm;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: flex-start;
-              padding: 1mm 1.5mm 0.5mm 1.5mm;
-              text-align: center;
-            }
-            .store-name {
-              font-size: 11px;
-              font-weight: 900;
-              text-align: center;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.2;
-              border-bottom: 1px dashed #000;
-              padding-bottom: 1px;
-              margin-bottom: 1px;
-            }
-            .device-row {
-              font-size: 8.5px;
-              font-weight: 900;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.2;
-            }
-            .customer-row {
-              font-size: 7.5px;
-              font-weight: 700;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              line-height: 1.1;
-            }
-            .issue-row {
-              font-size: 8px;
-              font-weight: 900;
-              width: 100%;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              background: #000;
-              color: #fff;
-              padding: 0.5px 2px;
-              border-radius: 2px;
-              margin: 1px 0;
-              line-height: 1.2;
-            }
-            .barcode-container {
-              width: 100%;
-              flex: 1;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            #barcode-elem {
-              width: 100%;
-            }
-            .footer-row {
-              font-size: 7.5px;
-              font-weight: 900;
-              width: 100%;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              line-height: 1;
-              padding-bottom: 0.5mm;
-            }
-          </style>
-          <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
-        </head>
-        <body>
-          <div class="label-wrapper">
-            <div class="store-name">${shopName || 'مدير الصيانة الذكي'}</div>
-            <div class="device-row">📱 ${phoneModel}</div>
-            <div class="customer-row">👤 ${cleanCustomerName} ${cleanPhone ? `(${cleanPhone})` : ''}</div>
-            <div class="issue-row">🔧 عطل: ${issueText}</div>
-            <div class="barcode-container">
-              <svg id="barcode-elem"></svg>
-            </div>
-            <div class="footer-row">
-              <span>كود: ${trackingCode}</span>
-              <span>حساب: ${costText}${paidText}</span>
-            </div>
-          </div>
-          <script>
-            window.onload = function() {
-              try {
-                var code = "${trackingCode}";
-                JsBarcode("#barcode-elem", code, {
-                  format: "CODE128",
-                  width: 1.6,
-                  height: 18,
-                  displayValue: false,
-                  margin: 0
-                });
-                setTimeout(() => {
-                  window.print();
-                  window.close();
-                }, 400);
-              } catch (e) {
-                console.error(e);
-                window.close();
-              }
-            };
-          <\/script>
-        </body>
-      </html>
-    `);
+    // Render barcode to Canvas → PNG (guaranteed print on thermal printers)
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(hiddenDiv);
+    const canvas = document.createElement('canvas');
+    hiddenDiv.appendChild(canvas);
+
+    let barcodeDataURL = '';
+    try {
+      JsBarcode(canvas, trackingCode, {
+        format: 'CODE128',
+        width: 2.5,
+        height: 50,
+        displayValue: true,
+        fontSize: 14,
+        margin: 8,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+      barcodeDataURL = canvas.toDataURL('image/png');
+    } catch (e) {
+      console.error('Barcode render failed:', e);
+    }
+    document.body.removeChild(hiddenDiv);
+
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>استيكر صيانة</title>
+    <style>
+      @page { size: 38mm 22mm; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
+      .wrap { width: 38mm; height: 22mm; display: flex; flex-direction: column; align-items: center; padding: 1mm; gap: 0.5mm; text-align: center; }
+      .sname { font-size: 8pt; font-weight: 900; text-align: center; width: 100%; line-height: 1.1; border-bottom: 1px dashed #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; }
+      .dev { font-size: 7pt; font-weight: 900; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .cust { font-size: 6.5pt; font-weight: 700; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .issue { font-size: 6.5pt; font-weight: 900; width: 100%; background: #000; color: #fff; padding: 0 2px; border-radius: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+      .bc { width: 100%; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 0; }
+      .bc img { max-width: 100%; max-height: 100%; display: block; }
+      .foot { font-size: 6pt; font-weight: 900; width: 100%; display: flex; justify-content: space-between; margin-top: auto; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="sname">${shopName || 'مدير الصيانة الذكي'}</div>
+      <div class="dev">📱 ${phoneModel}</div>
+      <div class="cust">👤 ${cleanCustomerName}${cleanPhone ? ` (${cleanPhone})` : ''}</div>
+      <div class="issue">🔧 عطل: ${issueText}</div>
+      <div class="bc">${barcodeDataURL ? `<img src="${barcodeDataURL}" />` : ''}</div>
+      <div class="foot">
+        <span>كود: ${trackingCode}</span>
+        <span>حساب: ${costText}${paidText}</span>
+      </div>
+    </div>
+    <script>
+      var _p = false;
+      window.onload = function() {
+        if (_p) return; _p = true;
+        setTimeout(function() { window.print(); }, 500);
+      };
+      window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 300);
+      });
+    </script>
+  </body>
+</html>`);
     printWindow.document.close();
   };
+
 
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();

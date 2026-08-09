@@ -70,7 +70,10 @@ const App: React.FC = () => {
 
   const getDeviceIp = async (): Promise<string> => {
     try {
-      const res = await fetch('https://api.ipify.org?format=json');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeout);
       const data = await res.json();
       return data.ip || '';
     } catch {
@@ -128,7 +131,11 @@ const App: React.FC = () => {
   }, [isWaitingForDevice, session?.user?.id, isDeviceActivelyInUse]);
 
   useEffect(() => {
+    // Safety net: never show black screen for more than 5 seconds
+    const safetyTimeout = setTimeout(() => setLoading(false), 5000);
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(safetyTimeout);
       setSession(session);
       if (session) {
         setAppState('app');
@@ -137,6 +144,7 @@ const App: React.FC = () => {
         setLoading(false);
       }
     }).catch(err => {
+      clearTimeout(safetyTimeout);
       console.error('Supabase session loading failed:', err);
       setLoading(false);
     });
