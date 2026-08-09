@@ -289,9 +289,11 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
       const lowStock = (products || []).filter(p => p && p.stock <= 2);
       const pendingNames = new Set<string>();
       
-      // 1. Add low stock products
+      const itemsToInsert: any[] = [];
+      
+      // 1. Add low stock products (Bulk)
       for (const product of lowStock) {
-        if (!isMounted || !product?.name) continue;
+        if (!product?.name) continue;
         
         const normalizedName = product.name.trim().toLowerCase();
         const alreadyExists = (missingItems || []).some(item => 
@@ -300,29 +302,31 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
 
         if (!alreadyExists) {
           pendingNames.add(normalizedName);
-          const newItem = {
+          itemsToInsert.push({
             name: product.name,
             status: 'pending',
             is_automatic: true,
             shop_id: shopId,
             category: product.category || 'غير مصنف'
-          };
-          
-          try {
-            const { data, error } = await supabase.from('missing_goods').insert([newItem]).select();
-            if (!error && data && data[0] && isMounted) {
-              setMissingItems(prev => {
-                if (prev.some(p => p?.name?.trim()?.toLowerCase() === normalizedName)) return prev;
-                return [data[0], ...prev];
-              });
-            }
-          } catch (e) {
-            console.error("Sync insert failed", e);
-          }
+          });
         }
       }
 
-      // 2. Remove automatic products that now have stock > 2 or were deleted from inventory
+      if (itemsToInsert.length > 0 && isMounted) {
+        try {
+          const { data, error } = await supabase.from('missing_goods').insert(itemsToInsert).select();
+          if (!error && data && isMounted) {
+            setMissingItems(prev => {
+              const newItems = data.filter(d => !prev.some(p => p.id === d.id));
+              return [...newItems, ...prev];
+            });
+          }
+        } catch (e) {
+          console.error("Sync insert failed", e);
+        }
+      }
+
+      // 2. Remove automatic products that now have stock > 2 or were deleted (Bulk)
       const itemsToRemove = (missingItems || []).filter(item => {
         if (!item.is_automatic) return false;
         const normalizedName = item.name?.trim().toLowerCase();
@@ -333,12 +337,12 @@ const MissingGoods: React.FC<MissingGoodsProps> = ({ products = [], shopId, shop
         return product.stock > 2;
       });
 
-      for (const item of itemsToRemove) {
-        if (!isMounted) break;
+      if (itemsToRemove.length > 0 && isMounted) {
+        const idsToRemove = itemsToRemove.map(i => i.id);
         try {
-          const { error } = await supabase.from('missing_goods').delete().eq('id', item.id);
+          const { error } = await supabase.from('missing_goods').delete().in('id', idsToRemove);
           if (!error && isMounted) {
-            setMissingItems(prev => prev.filter(p => p.id !== item.id));
+            setMissingItems(prev => prev.filter(p => !idsToRemove.includes(p.id)));
           }
         } catch (e) {
           console.error("Sync delete failed", e);
