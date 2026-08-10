@@ -749,7 +749,7 @@ const PricingCard = ({ title, price, cycle, desc, features, buttonText, highligh
     
     <div className="flex items-center gap-5 mb-10">
       <div className={`p-4 rounded-2xl ${highlighted ? 'bg-white/15' : 'bg-slate-950 border border-white/5 shadow-inner'}`}>
-        {React.cloneElement(icon as React.ReactElement, { size: 28, className: highlighted ? "text-white" : "text-emerald-500" })}
+        {React.cloneElement(icon as React.ReactElement, { size: 28, className: highlighted ? "text-white" : "text-emerald-500" } as any)}
       </div>
       <h3 className="text-2xl font-black text-white">{title}</h3>
     </div>

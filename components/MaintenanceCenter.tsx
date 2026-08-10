@@ -30,6 +30,7 @@ import JsBarcode from 'jsbarcode';
 import { MaintenanceJob, Transaction, Product, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
 import { createMaintenanceJob, updateMaintenanceJob, createDebt, updateProductStock } from '../supabaseHelpers';
+import { extractMaintenanceJob } from '../utils/ai';
 
 interface Notification {
   id: string;
@@ -40,7 +41,7 @@ interface Notification {
 interface MaintenanceCenterProps {
   jobs: MaintenanceJob[];
   setJobs: React.Dispatch<React.SetStateAction<MaintenanceJob[]>>;
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   userRole: UserRole;
@@ -106,6 +107,9 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   const [jobForm, setJobForm] = useState({ customerName: '', customerPhone: '', phoneModel: '', issue: '', cost: 0, paidAmount: 0 });
   const [quickJob, setQuickJob] = useState({ customerName: '', phoneModel: '', issue: '', cost: 0, partsUsed: [] as Product[] });
+
+  const [aiInput, setAiInput] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const handleAddPartToJob = async (jobId: string, part: Product) => {
     const job = jobs.find(j => j.id === jobId);
@@ -282,6 +286,29 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     printWindow.document.close();
   };
 
+
+  const handleAiFill = async () => {
+    if (!aiInput.trim()) return;
+    setIsAiLoading(true);
+    try {
+      const data = await extractMaintenanceJob(aiInput);
+      setJobForm(prev => ({ 
+        ...prev, 
+        customerName: data.customerName || prev.customerName,
+        customerPhone: data.customerPhone || prev.customerPhone,
+        phoneModel: data.phoneModel || prev.phoneModel,
+        issue: data.issue || prev.issue,
+        paidAmount: data.paidAmount || prev.paidAmount,
+        cost: data.cost || prev.cost
+      }));
+      setAiInput('');
+      addNotification('تم تحليل وتعبئة البيانات بنجاح 🤖✨', 'success');
+    } catch (e: any) {
+      addNotification(e.message, 'warning');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -603,61 +630,51 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
 
   return (
     <div className="space-y-6 font-['Cairo'] relative">
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <button 
-            onClick={() => setActiveTab('workshop')}
-            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'workshop' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-indigo-50 border border-slate-100 dark:border-slate-800'}`}
-          >
-            <div className={`p-2 rounded-xl ${activeTab === 'workshop' ? 'bg-white/20' : 'bg-indigo-50 dark:bg-indigo-900/20'}`}>
-              <Wrench size={20} />
-            </div>
-            استلام جهاز (ورشة)
-          </button>
+      <div className="flex overflow-x-auto gap-2 sm:gap-3 pb-4 mb-2 no-scrollbar">
+        <button 
+          onClick={() => setActiveTab('workshop')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${activeTab === 'workshop' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-slate-100 dark:border-slate-800'}`}
+        >
+          <Wrench size={18} />
+          الورشة
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('pos')}
-            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 relative ${activeTab === 'pos' ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-emerald-50 border border-slate-100 dark:border-slate-800'}`}
-          >
-            <div className={`p-2 rounded-xl ${activeTab === 'pos' ? 'bg-white/20' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
-              <Receipt size={20} />
-            </div>
-            تسليم أجهزة جاهزة
-            {readyToDeliverCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-black animate-bounce shadow-lg border-2 border-white">
-                {readyToDeliverCount}
-              </span>
-            )}
-          </button>
+        <button 
+          onClick={() => setActiveTab('pos')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all relative ${activeTab === 'pos' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/30' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-slate-100 dark:border-slate-800'}`}
+        >
+          <Receipt size={18} />
+          تسليم أجهزة
+          {readyToDeliverCount > 0 && (
+            <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-xs mr-1 animate-pulse shadow-sm">
+              {readyToDeliverCount}
+            </span>
+          )}
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('quick')}
-            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'quick' ? 'bg-amber-500 text-white shadow-xl shadow-amber-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-amber-50 border border-slate-100 dark:border-slate-800'}`}
-          >
-            <div className={`p-2 rounded-xl ${activeTab === 'quick' ? 'bg-white/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-              <Sparkles size={20} />
-            </div>
-            صيانة سريعة (كاش)
-          </button>
+        <button 
+          onClick={() => setActiveTab('quick')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${activeTab === 'quick' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 border border-slate-100 dark:border-slate-800'}`}
+        >
+          <Sparkles size={18} />
+          صيانة سريعة
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('parts_sale')}
-            className={`flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'parts_sale' ? 'bg-blue-600 text-white shadow-xl shadow-blue-200 dark:shadow-none scale-105' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-blue-50 border border-slate-100 dark:border-slate-800'}`}
-          >
-            <div className={`p-2 rounded-xl ${activeTab === 'parts_sale' ? 'bg-white/20' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
-              <ShoppingBag size={20} />
-            </div>
-            بيع قطع غيار
-          </button>
-        </div>
+        <button 
+          onClick={() => setActiveTab('parts_sale')}
+          className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${activeTab === 'parts_sale' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-slate-100 dark:border-slate-800'}`}
+        >
+          <ShoppingBag size={18} />
+          بيع قطع
+        </button>
 
         {userRole !== 'CASHIER' && (
           <button 
             onClick={() => setActiveTab('parts')}
-            className={`w-full flex items-center justify-center gap-3 p-5 rounded-[2rem] font-black text-sm transition-all duration-300 ${activeTab === 'parts' ? 'bg-slate-900 text-white shadow-xl scale-[1.02]' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 hover:bg-slate-200'}`}
+            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${activeTab === 'parts' ? 'bg-slate-800 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
           >
-            <Package size={20} />
-            جرد القطع والنواقص (المخزن)
+            <Package size={18} />
+            جرد المخزن
           </button>
         )}
       </div>
@@ -673,7 +690,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                <p className="text-xs font-bold text-slate-400">متابعة شغل الصيانة والتقارير</p>
              </div>
              <button onClick={() => setShowAddJob(!showAddJob)} className="w-full sm:w-auto bg-slate-900 dark:bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-2xl active:scale-95 transition-all">
-               <Plus size={18}/> {userRole === 'cashier' ? 'اضغط هنا لاستلام جهاز جديد من عميل' : 'استلم جهاز جديد'}
+               <Plus size={18}/> {userRole === 'CASHIER' ? 'اضغط هنا لاستلام جهاز جديد من عميل' : 'استلم جهاز جديد'}
              </button>
           </div>
 
@@ -682,6 +699,29 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                <form onSubmit={handleAddJob} className="bg-white dark:bg-slate-900 w-full max-w-lg p-5 sm:p-8 rounded-[2.5rem] shadow-2xl space-y-5 sm:space-y-6 border border-slate-200 dark:border-slate-800 relative max-h-[95vh] overflow-y-auto no-scrollbar">
                   <button type="button" onClick={() => setShowAddJob(false)} className="absolute top-4 sm:top-6 left-4 sm:left-6 text-slate-400 hover:text-red-500 p-2"><Plus className="rotate-45" size={24}/></button>
                   <h4 className="text-xl sm:text-2xl font-black text-slate-800 dark:text-white text-right">استلام جهاز صيانة</h4>
+                  
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 space-y-3">
+                    <label className="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-end gap-1">
+                      ملء تلقائي بالذكاء الاصطناعي 🤖
+                    </label>
+                    <textarea 
+                      placeholder="اكتب هنا اللي حصل بالتفصيل... (مثال: استلمت ايفون 11 شاشة مكسورة من احمد 0101234 دفع 100 وتكلفته 500)"
+                      className="w-full p-3 rounded-xl border-none bg-white dark:bg-slate-800 text-right text-sm resize-none h-20 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                      value={aiInput}
+                      onChange={e => setAiInput(e.target.value)}
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleAiFill}
+                      disabled={isAiLoading || !aiInput.trim()}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-3 font-black text-sm flex justify-center items-center gap-2 transition-all shadow-md"
+                    >
+                      {isAiLoading ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : '✨ تحليل وتعبئة البيانات'}
+                    </button>
+                  </div>
+
                   <div className="space-y-4 sm:space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2 text-right">
@@ -771,7 +811,7 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
                            </button>
                            <div className="text-base font-black text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-4 py-1.5 rounded-full">{job.cost} ج</div>
                          </div>
-                         <select value={job.status} disabled={userRole === 'CASHIER'} onChange={e => updateJobStatus(job.id, e.target.value as any)} className={`text-xs p-2.5 rounded-xl border-none font-black shadow-sm outline-none transition-all appearance-none text-center min-w-[150px] ${job.status === 'pending' ? 'bg-amber-100 text-amber-700' : job.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-600 text-white shadow-lg'}`}>
+                         <select value={job.status} onChange={e => updateJobStatus(job.id, e.target.value as any)} className={`text-xs p-2.5 rounded-xl border-none font-black shadow-sm outline-none transition-all appearance-none text-center min-w-[150px] ${job.status === 'pending' ? 'bg-amber-100 text-amber-700' : job.status === 'in-progress' ? 'bg-blue-100 text-blue-700' : 'bg-green-600 text-white shadow-lg'}`}>
                             <option value="pending">⏳ لسه مستني الشغل</option>
                             <option value="in-progress">⚙️ شغالين فيه دلوقتي</option>
                             <option value="completed">✅ خلص خلاص (جاهز)</option>

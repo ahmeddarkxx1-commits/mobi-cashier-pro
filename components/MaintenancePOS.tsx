@@ -6,7 +6,7 @@ import { MaintenanceJob, Transaction } from '../types';
 interface MaintenancePOSProps {
   jobs: MaintenanceJob[];
   setJobs: React.Dispatch<React.SetStateAction<MaintenanceJob[]>>;
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
 }
 
 const MaintenancePOS: React.FC<MaintenancePOSProps> = ({ jobs, setJobs, addTransaction }) => {

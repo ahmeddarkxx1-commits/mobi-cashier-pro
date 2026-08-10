@@ -4,17 +4,19 @@ import toast from 'react-hot-toast';
 import { 
   LayoutDashboard, Wallet, Package, PieChart, Settings, Menu, X, Wrench, LogOut, Smartphone, LogIn, AlertCircle, Loader2, Bell, Store
 } from 'lucide-react';
-import Cashier from './components/Cashier';
-import MaintenanceCenter from './components/MaintenanceCenter';
-import Inventory from './components/Inventory';
-import Finance from './components/Finance';
-import Reports from './components/Reports';
-import Debts from './components/Debts';
-import ControlPanel from './components/ControlPanel';
-import SettingsView from './components/SettingsView';
-import MissingGoods from './components/MissingGoods';
 import { StoreSection, Product, MaintenanceJob, Transaction, TransferSetting, Expense, UserRole, AppConfig, SubscriptionInfo } from './types';
 import { supabase } from './supabaseClient';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const Cashier = React.lazy(() => import('./components/Cashier'));
+const MaintenanceCenter = React.lazy(() => import('./components/MaintenanceCenter'));
+const Inventory = React.lazy(() => import('./components/Inventory'));
+const Finance = React.lazy(() => import('./components/Finance'));
+const Reports = React.lazy(() => import('./components/Reports'));
+const Debts = React.lazy(() => import('./components/Debts'));
+const ControlPanel = React.lazy(() => import('./components/ControlPanel'));
+const SettingsView = React.lazy(() => import('./components/SettingsView'));
+const MissingGoods = React.lazy(() => import('./components/MissingGoods'));
 
 interface StoreAppProps {
   userRole: UserRole;
@@ -27,7 +29,14 @@ interface StoreAppProps {
 }
 
 const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setAppConfig, tenantId, shopPlan = 'BASIC', globalNotifications = [] }) => {
-  const [activeSection, setActiveSection] = useState<StoreSection>('cashier');
+  const [activeSection, setActiveSection] = useState<StoreSection>(() => {
+    const saved = localStorage.getItem('activeSection');
+    return (saved as StoreSection) || 'cashier';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('activeSection', activeSection);
+  }, [activeSection]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -299,10 +308,10 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     return () => clearInterval(syncInterval);
   }, [fetchData]);
 
-  const addTransaction = async (t: Omit<Transaction, 'id' | 'date'>) => {
+  const addTransaction = async (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => {
     if (!shopId) return;
 
-    const newT = { 
+    const newT: Transaction = { 
       ...t, 
       id: Math.random().toString(36).substr(2, 9), 
       date: new Date().toISOString(),
@@ -618,28 +627,32 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 lg:p-8 bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 no-scrollbar">
           <div className="max-w-6xl mx-auto pb-20 lg:pb-0">
-            {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
-            {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} shopName={shopName} />}
-            {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} shopName={shopName} />}
-            {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
-            { activeSection === 'reports' && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
-            { activeSection === 'debts' && <Debts shopId={shopId} addTransaction={addTransaction} /> }
-            { activeSection === 'missing_goods' && <MissingGoods products={products} shopId={shopId} shopName={shopName} /> }
-            { activeSection === 'settings' && (
-              <div className="pb-20">
-                <SettingsView 
-                  settings={transferSettings} 
-                  setSettings={setTransferSettings}
-                  trialDaysLeft={trialDaysLeft}
-                  shopStatus={shopStatus}
-                  expiryDate={expiryDate}
-                  shopPlan={shopPlan}
-                  shopDuration={shopDuration}
-                  shopId={shopId}
-                  userRole={userRole}
-                />
-              </div>
-            )}
+            <ErrorBoundary>
+              <React.Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>}>
+                {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
+                {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} shopName={shopName} />}
+                {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} shopName={shopName} />}
+                {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
+                { activeSection === 'reports' && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
+                { activeSection === 'debts' && <Debts shopId={shopId} addTransaction={addTransaction} /> }
+                { activeSection === 'missing_goods' && <MissingGoods products={products} shopId={shopId} shopName={shopName} /> }
+                { activeSection === 'settings' && (
+                  <div className="pb-20">
+                    <SettingsView 
+                      settings={transferSettings} 
+                      setSettings={setTransferSettings}
+                      trialDaysLeft={trialDaysLeft}
+                      shopStatus={shopStatus}
+                      expiryDate={expiryDate}
+                      shopPlan={shopPlan}
+                      shopDuration={shopDuration}
+                      shopId={shopId}
+                      userRole={userRole}
+                    />
+                  </div>
+                )}
+              </React.Suspense>
+            </ErrorBoundary>
           </div>
         </div>
       </main>

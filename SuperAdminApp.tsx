@@ -41,15 +41,15 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     }
 
     const channel = supabase.channel('admin_realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shops' }, (payload) => {
+      .on('postgres_changes' as any, { event: 'INSERT', schema: 'public', table: 'shops' }, (payload: any) => {
         if (payload.new.status === 'pending') {
           playNotificationSound();
           showPushNotification(payload.new.name);
         }
         fetchTenants();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, fetchTenants)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchTenants)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'shops' }, fetchTenants)
+      .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'profiles' }, fetchTenants)
       .subscribe();
     const interval = setInterval(() => fetchTenants(true), 15000);
     return () => { supabase.removeChannel(channel); clearInterval(interval); };
@@ -106,6 +106,18 @@ const SuperAdminApp: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     if (!error) {
       Swal.fire({ icon: 'success', title: 'تم تصفير قفل الجهاز بنجاح', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#0f172a', color: '#fff' });
       fetchShopUsers(shopId);
+    }
+  };
+
+  const handleRemoveUser = async (userId: string, shopId: string) => {
+    if (confirm('هل أنت متأكد من حذف هذا المستخدم نهائياً؟')) {
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      if (!error) {
+        Swal.fire({ icon: 'success', title: 'تم حذف المستخدم بنجاح', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, background: '#0f172a', color: '#fff' });
+        fetchShopUsers(shopId);
+      } else {
+        Swal.fire({ icon: 'error', title: 'خطأ في الحذف', text: error.message, background: '#0f172a', color: '#fff' });
+      }
     }
   };
 

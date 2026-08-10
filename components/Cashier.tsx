@@ -14,7 +14,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 interface CashierProps {
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
   transferSettings: TransferSetting[];
   isLimited?: boolean;
   shopId: string | null;
@@ -354,9 +354,6 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
 
     const timer = setTimeout(() => {
       try {
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCodeRef.current = html5QrCode;
-
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.EAN_8,
@@ -366,6 +363,9 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           Html5QrcodeSupportedFormats.UPC_E,
           Html5QrcodeSupportedFormats.QR_CODE
         ];
+
+        const html5QrCode = new Html5Qrcode("reader", { formatsToSupport: formatsToSupport, verbose: false });
+        html5QrCodeRef.current = html5QrCode;
 
         const onScanSuccess = (decodedText: string) => {
           playBeepSound();
@@ -393,7 +393,6 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
           { facingMode: "environment" },
           { 
             fps: 15,
-            formatsToSupport: formatsToSupport,
             qrbox: (width, height) => {
               return { width: Math.min(width * 0.8, 300), height: 120 };
             }

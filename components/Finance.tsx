@@ -6,7 +6,7 @@ import { Transaction, Expense } from '../types';
 
 interface FinanceProps {
   transactions: Transaction[];
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
   expenses: Expense[];
   setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
   appName?: string;

@@ -1,8 +1,10 @@
 
 import React, { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart as RePieChart, Pie, LineChart, Line } from 'recharts';
 import { Transaction, Expense, MaintenanceJob } from '../types';
-import { Calendar, TrendingUp, Target, Wallet, BarChart3, Wrench, AlertCircle, Clock, ListChecks, ChevronLeft, ChevronRight, FileText, Banknote, Download } from 'lucide-react';
+import { Calendar, TrendingUp, Target, Wallet, BarChart3, Wrench, AlertCircle, Clock, ListChecks, ChevronLeft, ChevronRight, FileText, Banknote, Download, Sparkles, Brain, Loader2 } from 'lucide-react';
+import { analyzeFinancialReports, AIAnalysisResult } from '../utils/ai';
 
 interface ReportsProps {
   transactions: Transaction[];
@@ -20,6 +22,13 @@ const Reports: React.FC<ReportsProps> = ({ transactions, expenses, maintenanceJo
 
   const [period, setPeriod] = useState<ReportPeriod>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Clear AI analysis when period or selected date changes
+  React.useEffect(() => {
+    setAiAnalysis(null);
+  }, [period, selectedDate]);
 
   // Auto-refresh date at midnight
   React.useEffect(() => {
@@ -119,6 +128,42 @@ const Reports: React.FC<ReportsProps> = ({ transactions, expenses, maintenanceJo
     URL.revokeObjectURL(url);
   };
 
+  const handleGetAnalysis = async () => {
+    setIsAiLoading(true);
+    try {
+      const summaryTransactions = stats.periodTransactions.slice(0, 20).map(t => ({
+        type: t.type === 'expense' ? 'مصروف' : t.type === 'sale' ? 'بيع' : t.type === 'maintenance' ? 'صيانة' : 'تحويل',
+        description: t.description,
+        amount: t.amount,
+        profit: t.profit || 0
+      }));
+
+      const periodLabel = period === 'daily' ? `يوم ${selectedDate}` : period === 'monthly' ? 'الشهر الحالي' : 'السنة الحالية';
+
+      const data = {
+        period: periodLabel,
+        date: period === 'daily' ? selectedDate : undefined,
+        income: stats.income,
+        profit: stats.profit,
+        expense: stats.expense,
+        balanceProfit: stats.balanceProfit,
+        maintenanceProfit: stats.maintenanceProfit,
+        uncollectedCount: stats.uncollectedCount,
+        uncollectedValue: stats.uncollectedValue,
+        transactionsSummary: summaryTransactions
+      };
+
+      const result = await analyzeFinancialReports(data);
+      setAiAnalysis(result);
+      toast.success('تم تحليل البيانات المالية بنجاح 🤖📈');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'فشل تحميل تحليل الذكاء الاصطناعي');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12 font-['Cairo']">
       {/* Period Switcher & Date Picker */}
@@ -142,12 +187,23 @@ const Reports: React.FC<ReportsProps> = ({ transactions, expenses, maintenanceJo
           </div>
         )}
 
-        <button
-          onClick={handleDownloadReport}
-          className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg active:scale-95 text-xs"
-        >
-          <Download size={18} /> تحميل الملف
-        </button>
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={handleGetAnalysis}
+            disabled={isAiLoading}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg shadow-indigo-500/10 active:scale-95 text-xs transition-all"
+          >
+            {isAiLoading ? <Loader2 className="animate-spin" size={18} /> : <Brain size={18} />}
+            {isAiLoading ? 'جاري التحليل...' : 'تحليل الأرباح بالذكاء الاصطناعي ✨'}
+          </button>
+
+          <button
+            onClick={handleDownloadReport}
+            className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg active:scale-95 text-xs transition-all"
+          >
+            <Download size={18} /> تحميل الملف
+          </button>
+        </div>
       </div>
 
       {/* Main Stats Cards */}
@@ -254,6 +310,83 @@ const Reports: React.FC<ReportsProps> = ({ transactions, expenses, maintenanceJo
           </div>
         </div>
       </div>
+
+      {/* AI Analysis Box */}
+      {aiAnalysis && (
+        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-8 rounded-[2.5rem] border border-indigo-500/20 shadow-xl shadow-indigo-950/20 space-y-6 relative overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300 text-right font-['Cairo']">
+          <div className="absolute top-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-[100px] -ml-40 -mt-40"></div>
+          
+          <div className="flex items-center justify-between relative border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-500/20 text-indigo-300 rounded-2xl border border-indigo-500/30">
+                <Brain size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <h4 className="font-black text-lg">التقرير المالي الذكي</h4>
+                <p className="text-[10px] text-indigo-300 font-bold">تم تحليله بواسطة الذكاء الاصطناعي</p>
+              </div>
+            </div>
+            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full font-black border border-indigo-500/30">
+              تحليل {period === 'daily' ? 'اليوم' : period === 'monthly' ? 'الشهر' : 'السنة'}
+            </span>
+          </div>
+
+          <div className="relative space-y-6">
+            {/* General Summary */}
+            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+              <p className="text-sm font-bold text-slate-200 leading-relaxed">{aiAnalysis.summary}</p>
+            </div>
+
+            {/* Strengths & Weaknesses Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Strengths */}
+              <div className="space-y-3">
+                <h5 className="font-black text-xs text-green-400 flex items-center gap-2 justify-end">
+                  نقاط القوة والأداء الإيجابي 👍
+                </h5>
+                <ul className="space-y-2">
+                  {aiAnalysis.strengths.map((str: string, index: number) => (
+                    <li key={index} className="text-xs font-medium text-slate-300 flex items-start justify-end gap-2 bg-green-500/5 p-3 rounded-xl border border-green-500/10">
+                      <span className="text-right flex-1">{str}</span>
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full mt-1.5 shrink-0"></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Weaknesses */}
+              <div className="space-y-3">
+                <h5 className="font-black text-xs text-red-400 flex items-center gap-2 justify-end">
+                  نقاط تحتاج لمتابعة وتنبيهات ⚠️
+                </h5>
+                <ul className="space-y-2">
+                  {aiAnalysis.weaknesses.map((weak: string, index: number) => (
+                    <li key={index} className="text-xs font-medium text-slate-300 flex items-start justify-end gap-2 bg-red-500/5 p-3 rounded-xl border border-red-500/10">
+                      <span className="text-right flex-1">{weak}</span>
+                      <span className="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 shrink-0"></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Actionable Recommendations */}
+            <div className="space-y-3 pt-2">
+              <h5 className="font-black text-xs text-indigo-300 flex items-center gap-2 justify-end">
+                توصيات مقترحة لزيادة الأرباح 💡
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {aiAnalysis.recommendations.map((rec: string, index: number) => (
+                  <div key={index} className="bg-indigo-500/5 p-4 rounded-2xl border border-indigo-500/10 text-right space-y-1">
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-black px-2 py-0.5 rounded-md inline-block">توصية #{index + 1}</span>
+                    <p className="text-xs font-bold text-slate-200 leading-relaxed pt-1">{rec}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Daily Operations Log */}
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden animate-in fade-in duration-700 text-right">

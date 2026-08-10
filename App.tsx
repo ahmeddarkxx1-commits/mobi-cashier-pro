@@ -535,7 +535,7 @@ const App: React.FC = () => {
   }
 
   if (appState === 'landing') {
-    return <LandingPage onSelectPlan={(plan, duration) => { setSelectedPlan(plan); setSelectedDuration(duration); setAppState('register'); }} onLogin={() => setAppState('login')} />;
+    return <LandingPage onSelectPlan={(plan, duration) => { setSelectedPlan(plan as 'BASIC'|'PRO'); setSelectedDuration(duration); setAppState('register'); }} onLogin={() => setAppState('login')} />;
   }
 
   if (appState === 'register') {
@@ -605,7 +605,7 @@ const App: React.FC = () => {
   }
 
   if (userRole === 'SUPER_ADMIN') return <SuperAdminApp onLogout={handleLogout} />;
-  if (isMaintenance && userRole !== 'SUPER_ADMIN') return <LockScreen message={maintenanceMessage || 'النظام تحت الصيانة حالياً.. سنعود قريباً.'} icon="🔧" />;
+  if (isMaintenance) return <LockScreen message={maintenanceMessage || 'النظام تحت الصيانة حالياً.. سنعود قريباً.'} icon="🔧" />;
   if (isLocked) return <LockScreen message={lockMessage} />;
 
   return (

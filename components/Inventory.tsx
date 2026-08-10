@@ -5,6 +5,7 @@ import { Product } from '../types';
 import { supabase } from '../supabaseClient';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import JsBarcode from 'jsbarcode';
+import { extractProductDetails } from '../utils/ai';
 
 interface InventoryProps {
   products: Product[];
@@ -143,9 +144,13 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<Product['category'] | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 24;
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [aiInput, setAiInput] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
   
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -360,6 +365,13 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
     return matchesSearch && matchesFilter;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filter]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   const stats = useMemo(() => {
     const categorySummary: Record<string, { count: number; totalCost: number; totalRetail: number; totalWholesale: number }> = {};
     let grandTotalCost = 0;
@@ -451,9 +463,6 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
 
     const timer = setTimeout(() => {
       try {
-        const html5QrCode = new Html5Qrcode("form-reader");
-        formQrCodeRef.current = html5QrCode;
-
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.EAN_8,
@@ -463,6 +472,8 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
           Html5QrcodeSupportedFormats.UPC_E,
           Html5QrcodeSupportedFormats.QR_CODE
         ];
+        const html5QrCode = new Html5Qrcode("form-reader", { formatsToSupport: formatsToSupport, verbose: false });
+        formQrCodeRef.current = html5QrCode;
 
         const onScanSuccess = (decodedText: string) => {
           playBeepSound();
@@ -485,7 +496,6 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
           { facingMode: "environment" },
           { 
             fps: 15, 
-            formatsToSupport: formatsToSupport,
             qrbox: (width, height) => {
               return { width: Math.min(width * 0.8, 300), height: 120 };
             }
@@ -561,6 +571,32 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
     setIsAdding(false);
     setEditingId(null);
     setNewProduct({ name: '', price: 0, wholesale_price: 0, cost: 0, category: 'accessory', stock: 0, imei: '', barcode: '' });
+    setAiInput('');
+  };
+
+  const handleAiFill = async () => {
+    if (!aiInput.trim()) return;
+    setIsAiLoading(true);
+    try {
+      const data = await extractProductDetails(aiInput);
+      setNewProduct(prev => ({
+        ...prev,
+        name: data.name || prev.name,
+        price: data.price !== undefined ? data.price : prev.price,
+        wholesale_price: data.wholesale_price !== undefined ? data.wholesale_price : prev.wholesale_price,
+        cost: data.cost !== undefined ? data.cost : prev.cost,
+        category: data.category || prev.category,
+        stock: data.stock !== undefined ? data.stock : prev.stock,
+        barcode: data.barcode || prev.barcode,
+        imei: data.imei || prev.imei
+      }));
+      setAiInput('');
+      toast.success('تم تحليل وتعبئة البيانات بنجاح 🤖✨');
+    } catch (e: any) {
+      toast.error(e.message || 'فشل استخراج البيانات');
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const startEdit = (product: Product) => {
@@ -655,7 +691,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             إدارة التصنيفات
           </button>
           <button 
-            onClick={() => { setIsAdding(true); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0}); }}
+            onClick={() => { setIsAdding(true); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0, imei:'', barcode:''}); }}
             className="bg-indigo-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-xl w-full sm:w-auto active:scale-95 transition-all text-sm"
           >
             <Plus size={18} />
@@ -664,11 +700,13 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
         </div>
       </div>
 
+
+
       {/* Warehouse Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 overflow-x-auto no-scrollbar">
           <div className="flex gap-4 pb-2 min-w-max">
-            {Object.entries(stats.categorySummary).map(([cat, data]) => (
+            {Object.entries(stats.categorySummary).map(([cat, data]: [string, any]) => (
               <div key={cat} className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm min-w-[200px] space-y-3 transition-all hover:shadow-md">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">{CATEGORY_ICONS[cat] || '📦'}</span>
@@ -840,6 +878,31 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             {/* Scrollable Form Body */}
             <form id="product-form" onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 no-scrollbar">
               
+              {/* ملء تلقائي بالذكاء الاصطناعي */}
+              {!editingId && (
+                <div className="bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-3xl border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+                  <label className="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-end gap-1">
+                    ملء تلقائي بالذكاء الاصطناعي 🤖
+                  </label>
+                  <textarea 
+                    placeholder="اكتب تفاصيل البضاعة بالعامية... (مثال: عندي 10 شواحن انكر 20 واط سعر البيع 350 والشركة بايعاهالي ب 250 الباركود بتاعه 69341777)"
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-900 text-right text-sm resize-none h-20 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-medium"
+                    value={aiInput}
+                    onChange={e => setAiInput(e.target.value)}
+                  />
+                  <button 
+                    type="button"
+                    onClick={handleAiFill}
+                    disabled={isAiLoading || !aiInput.trim()}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-3 font-black text-sm flex justify-center items-center gap-2 transition-all shadow-md"
+                  >
+                    {isAiLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : '✨ تحليل وتعبئة البيانات'}
+                  </button>
+                </div>
+              )}
+
               {/* SECTION 1: الأساسيات (اسم المنتج والباركود) */}
               <div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
                 
@@ -1078,39 +1141,41 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
-        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-slate-800 flex flex-col gap-4 transition-colors duration-300">
-          <div className="relative flex-1 w-full">
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input type="text" placeholder="دور على البضاعة اللي عندك..." className="w-full pr-12 pl-4 py-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-right font-bold transition-colors duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-          </div>
-          
-          <div className="flex flex-wrap gap-2 justify-end">
+      {/* Search and Filters */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-800 p-4 sm:p-6 flex flex-col gap-4 transition-colors duration-300 mb-6">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input type="text" placeholder="دور على البضاعة اللي عندك..." className="w-full pr-12 pl-4 py-4 rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-right font-bold transition-colors duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        </div>
+        
+        <div className="flex flex-wrap gap-2 justify-end">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              filter === 'all' 
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            الكل
+          </button>
+          {Array.from(new Set((products || []).map(p => p.category))).map((cat: string) => (
             <button
-              onClick={() => setFilter('all')}
+              key={cat}
+              onClick={() => setFilter(cat)}
               className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                filter === 'all' 
+                filter === cat 
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              الكل
+              {getCategoryLabel(cat)}
             </button>
-            {Array.from(new Set((products || []).map(p => p.category))).map(cat => (
-              <button
-                key={cat}
-                onClick={() => setFilter(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                  filter === cat 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
-                }`}
-              >
-                {getCategoryLabel(cat)}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
 
         <div className="p-4 sm:p-6">
           {filteredProducts.length === 0 ? (
@@ -1122,7 +1187,7 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredProducts.map(product => (
+              {paginatedProducts.map(product => (
                 <div 
                   key={product.id} 
                   className="bg-white dark:bg-slate-800/50 rounded-[2rem] border border-gray-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all group relative overflow-hidden"
@@ -1186,6 +1251,44 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-all hover:bg-slate-200"
+              >
+                السابق
+              </button>
+              
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => Math.abs(p - currentPage) <= 2 || p === 1 || p === totalPages).map((p, i, arr) => (
+                  <React.Fragment key={p}>
+                    {i > 0 && arr[i - 1] !== p - 1 && <span className="px-2 py-2 text-slate-400">...</span>}
+                    <button 
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center ${
+                        currentPage === p 
+                          ? 'bg-blue-600 text-white shadow-lg' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 rounded-xl text-xs font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-all hover:bg-slate-200"
+              >
+                التالي
+              </button>
             </div>
           )}
         </div>

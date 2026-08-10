@@ -4,7 +4,7 @@ import { Zap, Hash, Sparkles, TrendingUp, DollarSign, HelpCircle, Smartphone, Ch
 import { Transaction, TransferSetting } from '../types';
 
 interface BalanceRechargeProps {
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
   settings: TransferSetting[];
 }
 

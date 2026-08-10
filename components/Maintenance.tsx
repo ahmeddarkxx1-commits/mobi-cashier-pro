@@ -26,6 +26,8 @@ const Maintenance: React.FC<MaintenanceProps> = ({ jobs, setJobs, parts }) => {
       ...formData,
       status: 'pending',
       date: new Date().toISOString(),
+      paidAmount: 0,
+      shop_id: '',
     };
     setJobs([newJob, ...jobs]);
     setShowAdd(false);

@@ -5,7 +5,7 @@ import { TransferSetting, Transaction } from '../types';
 
 interface BalanceTransferProps {
   settings: TransferSetting[];
-  addTransaction: (t: Omit<Transaction, 'id' | 'date'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'date' | 'shop_id'> & { shop_id?: string }) => void;
 }
 
 const BalanceTransfer: React.FC<BalanceTransferProps> = ({ settings, addTransaction }) => {

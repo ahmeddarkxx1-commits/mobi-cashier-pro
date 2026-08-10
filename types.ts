@@ -33,7 +33,7 @@ export interface Debt {
   date: string;
   dueDate?: string;
   status: 'pending' | 'partially_paid' | 'paid';
-  type: 'sale' | 'maintenance' | 'loan';
+  type: 'sale' | 'maintenance' | 'loan' | 'manual';
   shop_id: string;
 }
 
