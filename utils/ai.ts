@@ -197,7 +197,7 @@ export async function extractProductsFromImage(
     throw new Error('API Key is missing! تأكد من إضافة GEMINI_API_KEY');
   }
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
 
   const prompt = `
 أنت مساعد ذكي مخصص لمراجعة وفك خطوط الفواتير الورقية أو الكشوفات المكتوبة بخط اليد أو المطبوعة لمحلات الموبايلات والصيانة.
