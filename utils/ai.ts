@@ -241,6 +241,13 @@ export async function extractProductsFromImage(
     // Clean up if it contains markdown code blocks
     textResponse = textResponse.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
 
+    // Robust JSON extraction matching array brackets [ ... ]
+    const startIdx = textResponse.indexOf('[');
+    const endIdx = textResponse.lastIndexOf(']');
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      textResponse = textResponse.substring(startIdx, endIdx + 1);
+    }
+
     const parsedData = JSON.parse(textResponse);
     if (!Array.isArray(parsedData)) {
       return [];
@@ -257,8 +264,9 @@ export async function extractProductsFromImage(
       barcode: item.barcode || '',
       imei: item.imei || ''
     }));
-  } catch (error) {
+  } catch (error: any) {
     console.error('AI Image Parse Error:', error);
-    throw new Error('مقدرتش أقرأ الصورة بشكل صحيح، تأكد من وضوح الصورة وتفاصيل البضاعة وسعرها والعدد.');
+    // Return descriptive error details to the user to make debugging fast and friendly
+    throw new Error('مقدرتش أقرأ الصورة بشكل صحيح: ' + (error.message || error));
   }
 }
