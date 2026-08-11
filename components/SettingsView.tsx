@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, MessageCircle, Crown, Clock, CheckCircle, XCircle, Download, Database, UserPlus, Users, Trash2, Send, Loader2, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { Save, MessageCircle, Crown, Clock, CheckCircle, XCircle, Download, Database, UserPlus, Users, Trash2, Send, Loader2, Plus, RefreshCw, Wallet, Printer, Sliders } from 'lucide-react';
 import { TransferSetting } from '../types';
 import { supabase } from '../supabaseClient';
+import JsBarcode from 'jsbarcode';
 
 interface SettingsViewProps {
   settings: TransferSetting[];
@@ -29,6 +30,315 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
   const [maxCashiers, setMaxCashiers] = useState(5);
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+
+  const [barcodePrintSettings, setBarcodePrintSettings] = useState({
+    paddingTop: 0,
+    paddingBottom: 3,
+    paddingLeft: 1,
+    paddingRight: 1,
+    scale: 100,
+    fontSizeSname: 9,
+    fontSizePname: 7,
+    fontSizePrice: 8
+  });
+
+  const [maintPrintSettings, setMaintPrintSettings] = useState({
+    paddingTop: 1,
+    paddingBottom: 1,
+    paddingLeft: 1,
+    paddingRight: 1,
+    scale: 100,
+    fontSizeSname: 8,
+    fontSizeDev: 7,
+    fontSizeCust: 6.5,
+    fontSizeIssue: 6.5,
+    fontSizeFoot: 6
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('barcode_print_settings');
+    if (saved) {
+      try {
+        setBarcodePrintSettings(prev => ({ ...prev, ...JSON.parse(saved) }));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const savedMaint = localStorage.getItem('maint_print_settings');
+    if (savedMaint) {
+      try {
+        setMaintPrintSettings(prev => ({ ...prev, ...JSON.parse(savedMaint) }));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const updateBarcodeSetting = (key: string, value: number) => {
+    const updated = { ...barcodePrintSettings, [key]: value };
+    setBarcodePrintSettings(updated);
+    localStorage.setItem('barcode_print_settings', JSON.stringify(updated));
+  };
+
+  const resetBarcodeSettings = () => {
+    const defaults = {
+      paddingTop: 0,
+      paddingBottom: 3,
+      paddingLeft: 1,
+      paddingRight: 1,
+      scale: 100,
+      fontSizeSname: 9,
+      fontSizePname: 7,
+      fontSizePrice: 8
+    };
+    setBarcodePrintSettings(defaults);
+    localStorage.setItem('barcode_print_settings', JSON.stringify(defaults));
+  };
+
+  const updateMaintSetting = (key: string, value: number) => {
+    const updated = { ...maintPrintSettings, [key]: value };
+    setMaintPrintSettings(updated);
+    localStorage.setItem('maint_print_settings', JSON.stringify(updated));
+  };
+
+  const resetMaintSettings = () => {
+    const defaults = {
+      paddingTop: 1,
+      paddingBottom: 1,
+      paddingLeft: 1,
+      paddingRight: 1,
+      scale: 100,
+      fontSizeSname: 8,
+      fontSizeDev: 7,
+      fontSizeCust: 6.5,
+      fontSizeIssue: 6.5,
+      fontSizeFoot: 6
+    };
+    setMaintPrintSettings(defaults);
+    localStorage.setItem('maint_print_settings', JSON.stringify(defaults));
+  };
+
+  const handlePrintTestBarcode = () => {
+    const displayName = "صنف تجريبي للمعاينة";
+    const barcode = "123456789012";
+    const price = "150";
+
+    // Render barcode to Canvas then convert to PNG
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(hiddenDiv);
+    const canvas = document.createElement('canvas');
+    hiddenDiv.appendChild(canvas);
+
+    let barcodeDataURL = '';
+    try {
+      JsBarcode(canvas, barcode, {
+        format: 'CODE128',
+        width: 1.5,
+        height: 18,
+        displayValue: true,
+        fontSize: 13,
+        fontOptions: 'bold',
+        margin: 0,
+        textMargin: 1,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+      barcodeDataURL = canvas.toDataURL('image/png');
+    } catch (e) {
+      console.error('Barcode test render failed:', e);
+      alert('فشل رسم باركود التجربة');
+      document.body.removeChild(hiddenDiv);
+      return;
+    }
+    document.body.removeChild(hiddenDiv);
+
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>باركود تجريبي</title>
+    <style>
+      @page { size: 38mm 22mm; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
+      .wrap { 
+        width: 38mm; 
+        height: 22mm; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: ${barcodePrintSettings.paddingTop}mm ${barcodePrintSettings.paddingRight}mm ${barcodePrintSettings.paddingBottom}mm ${barcodePrintSettings.paddingLeft}mm; 
+        transform: scale(${barcodePrintSettings.scale / 100});
+        transform-origin: top center;
+        text-align: center; 
+      }
+      .sname { font-size: ${barcodePrintSettings.fontSizeSname}pt; font-weight: 900; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: -1px; margin-top: 1px; }
+      .pname { font-size: ${barcodePrintSettings.fontSizePname}pt; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: 0px; }
+      .bc { width: 100%; display: flex; align-items: center; justify-content: center; }
+      .bc img { max-width: 100%; height: auto; display: block; }
+      .price { font-size: ${barcodePrintSettings.fontSizePrice}pt; font-weight: 900; text-align: center; width: 100%; line-height: 1; margin-top: -2px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="sname">${shopName || 'محل موبايلات تجريبي'}</div>
+      <div class="pname">${displayName}</div>
+      <div class="bc"><img src="${barcodeDataURL}" /></div>
+      <div class="price">السعر: ${price} ج</div>
+    </div>
+    <script>
+      var _p = false;
+      window.onload = function() {
+        if (_p) return; _p = true;
+        setTimeout(function() { window.print(); }, 500);
+      };
+      window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 300);
+      });
+    </script>
+  </body>
+</html>`);
+    printWindow.document.close();
+  };
+
+  const handlePrintTestMaint = () => {
+    const displayName = "هاتف ايفون 13 برو";
+    const cleanCustomerName = "احمد علي";
+    const cleanPhone = "01000000000";
+    const issueText = "تغيير شاشة أصلية";
+    const trackingCode = "98765";
+    const costText = "4500 ج";
+    const paidText = " (مقدم: 500ج)";
+
+    // Render barcode to Canvas then convert to PNG
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(hiddenDiv);
+    const canvas = document.createElement('canvas');
+    hiddenDiv.appendChild(canvas);
+
+    let barcodeDataURL = '';
+    try {
+      JsBarcode(canvas, trackingCode, {
+        format: 'CODE128',
+        width: 1.5,
+        height: 18,
+        displayValue: true,
+        fontSize: 13,
+        fontOptions: 'bold',
+        margin: 0,
+        textMargin: 1,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+      barcodeDataURL = canvas.toDataURL('image/png');
+    } catch (e) {
+      console.error('Barcode test render failed:', e);
+      alert('فشل رسم باركود التجربة');
+      document.body.removeChild(hiddenDiv);
+      return;
+    }
+    document.body.removeChild(hiddenDiv);
+
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>استيكر صيانة تجريبي</title>
+    <style>
+      @page { size: 38mm 22mm; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
+      .wrap { 
+        width: 38mm; 
+        height: 22mm; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        padding: ${maintPrintSettings.paddingTop}mm ${maintPrintSettings.paddingRight}mm ${maintPrintSettings.paddingBottom}mm ${maintPrintSettings.paddingLeft}mm; 
+        transform: scale(${maintPrintSettings.scale / 100});
+        transform-origin: top center;
+        text-align: center; 
+        gap: 0.5mm;
+      }
+      .sname { font-size: ${maintPrintSettings.fontSizeSname}pt; font-weight: 900; text-align: center; width: 100%; line-height: 1.1; border-bottom: 1px dashed #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; }
+      .dev { font-size: ${maintPrintSettings.fontSizeDev}pt; font-weight: 900; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .cust { font-size: ${maintPrintSettings.fontSizeCust}pt; font-weight: 700; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .issue { font-size: ${maintPrintSettings.fontSizeIssue}pt; font-weight: 900; width: 100%; background: #000; color: #fff; padding: 0 2px; border-radius: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+      .bc { width: 100%; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 0; }
+      .bc img { max-width: 100%; max-height: 100%; display: block; }
+      .foot { font-size: ${maintPrintSettings.fontSizeFoot}pt; font-weight: 900; width: 100%; display: flex; justify-content: space-between; margin-top: auto; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="sname">${shopName || 'مدير الصيانة الذكي'}</div>
+      <div class="dev">📱 ${displayName}</div>
+      <div class="cust">👤 ${cleanCustomerName}${cleanPhone ? ` (${cleanPhone})` : ''}</div>
+      <div class="issue">🔧 عطل: ${issueText}</div>
+      <div class="bc">${barcodeDataURL ? `<img src="${barcodeDataURL}" />` : ''}</div>
+      <div class="foot">
+        <span>كود: ${trackingCode}</span>
+        <span>حساب: ${costText}${paidText}</span>
+      </div>
+    </div>
+    <script>
+      var _p = false;
+      window.onload = function() {
+        if (_p) return; _p = true;
+        setTimeout(function() { window.print(); }, 500);
+      };
+      window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 300);
+      });
+    </script>
+  </body>
+</html>`);
+    printWindow.document.close();
+  };
+
+  const handleSaveBarcodeSettings = async () => {
+    if (!shopId) return;
+    setSaveLoading(true);
+    try {
+      const { data: currentShop } = await supabase.from('shops').select('settings').eq('id', shopId).single();
+      const currentSettings = currentShop?.settings || {};
+
+      const newSettings = {
+        ...currentSettings,
+        barcode_print_settings: barcodePrintSettings,
+        maint_print_settings: maintPrintSettings
+      };
+
+      const { error } = await supabase.from('shops').update({ settings: newSettings }).eq('id', shopId);
+      if (error) throw error;
+
+      localStorage.setItem('barcode_print_settings', JSON.stringify(barcodePrintSettings));
+      localStorage.setItem('maint_print_settings', JSON.stringify(maintPrintSettings));
+      alert('✅ تم حفظ إعدادات الطباعة (الباركود والصيانة) بنجاح سحابياً!');
+    } catch (e: any) {
+      console.error('Failed to save settings:', e);
+      alert('❌ فشل حفظ الإعدادات: ' + e.message);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
 
   const isOwnerOrManager = userRole === 'OWNER' || userRole === 'MANAGER';
 
@@ -63,10 +373,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     if (members) setTeamMembers(members);
     const { data: invites } = await supabase.from('shop_invites').select('*').eq('shop_id', shopId).eq('accepted', false);
     if (invites) setPendingInvites(invites);
-    const { data: shop } = await supabase.from('shops').select('name, max_cashiers').eq('id', shopId).single();
+    const { data: shop } = await supabase.from('shops').select('name, max_cashiers, settings').eq('id', shopId).single();
     if (shop) {
       setShopName(shop.name);
       setMaxCashiers(shop.max_cashiers || 5);
+      
+      const cloudSettings = shop.settings?.barcode_print_settings;
+      if (cloudSettings) {
+        setBarcodePrintSettings(cloudSettings);
+        localStorage.setItem('barcode_print_settings', JSON.stringify(cloudSettings));
+      }
+      
+      const cloudMaintSettings = shop.settings?.maint_print_settings;
+      if (cloudMaintSettings) {
+        setMaintPrintSettings(cloudMaintSettings);
+        localStorage.setItem('maint_print_settings', JSON.stringify(cloudMaintSettings));
+      }
     }
   };
 
@@ -421,6 +743,476 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
            <p className="text-center text-[10px] text-slate-400 font-bold mt-8">
              * سيتم حفظ المظهر المفضل لهذا المتصفح تلقائياً
            </p>
+        </div>
+      )}
+
+      {/* Settings for Barcode Printing */}
+      {activeTab === 'appearance' && (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 mt-6 animate-in slide-in-from-bottom duration-500">
+           <div className="flex flex-col gap-1 text-right mb-6">
+              <h3 className="text-xl font-black flex items-center gap-3 justify-end">
+                <Printer className="text-blue-500" size={24} />
+                إعدادات معايرة طباعة الباركود (لهذا الجهاز)
+              </h3>
+              <p className="text-xs text-slate-400 font-bold">تعديل هذه المقاسات إذا كانت الطباعة تخرج عن حدود الملصق الحراري (38mm x 22mm) على هذا الكمبيوتر.</p>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-right" dir="rtl">
+              {/* Padding Margins */}
+              <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                 <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-2">
+                    <Sliders size={16} className="text-blue-500" />
+                    هوامش الملصق (مم)
+                 </h4>
+                 
+                 <div className="space-y-3">
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش العلوي (Top)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.paddingTop} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={barcodePrintSettings.paddingTop} 
+                          onChange={e => updateBarcodeSetting('paddingTop', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش السفلي (Bottom)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.paddingBottom} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={barcodePrintSettings.paddingBottom} 
+                          onChange={e => updateBarcodeSetting('paddingBottom', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش الأيسر (Left)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.paddingLeft} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={barcodePrintSettings.paddingLeft} 
+                          onChange={e => updateBarcodeSetting('paddingLeft', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش الأيمن (Right)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.paddingRight} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={barcodePrintSettings.paddingRight} 
+                          onChange={e => updateBarcodeSetting('paddingRight', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+                 </div>
+              </div>
+
+              {/* Sizes and Zoom */}
+              <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                 <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-2">
+                    <Sliders size={16} className="text-blue-500" />
+                    حجم الملصق والخطوط (pt / %)
+                 </h4>
+                 
+                 <div className="space-y-3">
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>نسبة تكبير/تصغير الملصق (Scale)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.scale}%</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="50" 
+                          max="150" 
+                          step="5" 
+                          value={barcodePrintSettings.scale} 
+                          onChange={e => updateBarcodeSetting('scale', parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>حجم خط اسم المحل (Store Name)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.fontSizeSname} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="6" 
+                          max="14" 
+                          step="0.5" 
+                          value={barcodePrintSettings.fontSizeSname} 
+                          onChange={e => updateBarcodeSetting('fontSizeSname', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>حجم خط اسم المنتج (Product Name)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.fontSizePname} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="5" 
+                          max="12" 
+                          step="0.5" 
+                          value={barcodePrintSettings.fontSizePname} 
+                          onChange={e => updateBarcodeSetting('fontSizePname', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>حجم خط السعر (Price)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.fontSizePrice} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="6" 
+                          max="14" 
+                          step="0.5" 
+                          value={barcodePrintSettings.fontSizePrice} 
+                          onChange={e => updateBarcodeSetting('fontSizePrice', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                     <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                           <span>عرض خطوط الباركود (Thick/Thin lines)</span>
+                           <span className="text-blue-600 dark:text-blue-400">{(barcodePrintSettings.barcodeWidth || 2).toFixed(1)}</span>
+                        </div>
+                        <input 
+                           type="range" 
+                           min="1" 
+                           max="3" 
+                           step="0.5" 
+                           value={barcodePrintSettings.barcodeWidth || 2} 
+                           onChange={e => updateBarcodeSetting('barcodeWidth', parseFloat(e.target.value))}
+                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                     </div>
+
+                     <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                           <span>ارتفاع الباركود نفسه (Barcode Height)</span>
+                           <span className="text-blue-600 dark:text-blue-400">{barcodePrintSettings.barcodeHeight || 25} px</span>
+                        </div>
+                        <input 
+                           type="range" 
+                           min="10" 
+                           max="50" 
+                           step="2" 
+                           value={barcodePrintSettings.barcodeHeight || 25} 
+                           onChange={e => updateBarcodeSetting('barcodeHeight', parseInt(e.target.value))}
+                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                     </div>
+
+                     <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                           <span>عرض خطوط الباركود (Thick/Thin lines)</span>
+                           <span className="text-blue-600 dark:text-blue-400">{(maintPrintSettings.barcodeWidth || 1.5).toFixed(1)}</span>
+                        </div>
+                        <input 
+                           type="range" 
+                           min="1" 
+                           max="3" 
+                           step="0.5" 
+                           value={maintPrintSettings.barcodeWidth || 1.5} 
+                           onChange={e => updateMaintSetting('barcodeWidth', parseFloat(e.target.value))}
+                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                     </div>
+
+                     <div>
+                        <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                           <span>ارتفاع الباركود نفسه (Barcode Height)</span>
+                           <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.barcodeHeight || 18} px</span>
+                        </div>
+                        <input 
+                           type="range" 
+                           min="10" 
+                           max="50" 
+                           step="2" 
+                           value={maintPrintSettings.barcodeHeight || 18} 
+                           onChange={e => updateMaintSetting('barcodeHeight', parseInt(e.target.value))}
+                           className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            <div className="flex justify-center gap-4 mt-6">
+               <button 
+                 onClick={handleSaveBarcodeSettings}
+                 disabled={saveLoading}
+                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-6 py-3 rounded-2xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50"
+               >
+                 {saveLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                 حفظ المقاسات في الحساب (سحابياً)
+               </button>
+               <button 
+                 onClick={handlePrintTestBarcode}
+                 className="bg-blue-600 hover:bg-blue-500 text-white font-black text-sm px-6 py-3 rounded-2xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+               >
+                 <Printer size={16} />
+                 طباعة ملصق تجريبي
+               </button>
+               <button 
+                 onClick={resetBarcodeSettings}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-sm px-6 py-3 rounded-2xl transition-all"
+              >
+                إعادة تعيين الافتراضي
+              </button>
+           </div>
+        </div>
+      )}
+
+      {/* Settings for Maintenance Printing */}
+      {activeTab === 'appearance' && (
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-800 mt-6 animate-in slide-in-from-bottom duration-500">
+           <div className="flex flex-col gap-1 text-right mb-6">
+              <h3 className="text-xl font-black flex items-center gap-3 justify-end">
+                <Printer className="text-blue-500" size={24} />
+                إعدادات معايرة طباعة ملصق الصيانة (لهذا الجهاز)
+              </h3>
+              <p className="text-xs text-slate-400 font-bold">تعديل هذه المقاسات إذا كانت طباعة استيكر الصيانة تخرج عن حدود الملصق الحراري (38mm x 22mm) على هذا الكمبيوتر.</p>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-right" dir="rtl">
+              {/* Padding Margins */}
+              <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                 <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-2">
+                    <Sliders size={16} className="text-blue-500" />
+                    هوامش الملصق (مم)
+                 </h4>
+                 
+                 <div className="space-y-3">
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش العلوي (Top)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.paddingTop} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={maintPrintSettings.paddingTop} 
+                          onChange={e => updateMaintSetting('paddingTop', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش السفلي (Bottom)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.paddingBottom} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={maintPrintSettings.paddingBottom} 
+                          onChange={e => updateMaintSetting('paddingBottom', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش الأيسر (Left)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.paddingLeft} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={maintPrintSettings.paddingLeft} 
+                          onChange={e => updateMaintSetting('paddingLeft', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>الهامش الأيمن (Right)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.paddingRight} مم</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="0" 
+                          max="10" 
+                          step="0.5" 
+                          value={maintPrintSettings.paddingRight} 
+                          onChange={e => updateMaintSetting('paddingRight', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+                 </div>
+              </div>
+
+              {/* Sizes and Zoom */}
+              <div className="space-y-4 bg-slate-50 dark:bg-slate-800/40 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
+                 <h4 className="font-black text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 mb-2">
+                    <Sliders size={16} className="text-blue-500" />
+                    حجم الملصق والخطوط (pt / %)
+                 </h4>
+                 
+                 <div className="space-y-3">
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>نسبة تكبير/تصغير الملصق (Scale)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.scale}%</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="50" 
+                          max="150" 
+                          step="5" 
+                          value={maintPrintSettings.scale} 
+                          onChange={e => updateMaintSetting('scale', parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>خط اسم المحل (Store Name)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.fontSizeSname} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="6" 
+                          max="14" 
+                          step="0.5" 
+                          value={maintPrintSettings.fontSizeSname} 
+                          onChange={e => updateMaintSetting('fontSizeSname', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>خط موديل الهاتف (Phone Model)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.fontSizeDev} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="5" 
+                          max="12" 
+                          step="0.5" 
+                          value={maintPrintSettings.fontSizeDev} 
+                          onChange={e => updateMaintSetting('fontSizeDev', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>خط اسم العميل والبيانات (Client Info)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.fontSizeCust} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="5" 
+                          max="12" 
+                          step="0.5" 
+                          value={maintPrintSettings.fontSizeCust} 
+                          onChange={e => updateMaintSetting('fontSizeCust', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>خط وصف العطل (Issue Text)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.fontSizeIssue} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="5" 
+                          max="12" 
+                          step="0.5" 
+                          value={maintPrintSettings.fontSizeIssue} 
+                          onChange={e => updateMaintSetting('fontSizeIssue', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+
+                    <div>
+                       <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                          <span>خط كود التتبع والحساب (Foot Text)</span>
+                          <span className="text-blue-600 dark:text-blue-400">{maintPrintSettings.fontSizeFoot} pt</span>
+                       </div>
+                       <input 
+                          type="range" 
+                          min="5" 
+                          max="12" 
+                          step="0.5" 
+                          value={maintPrintSettings.fontSizeFoot} 
+                          onChange={e => updateMaintSetting('fontSizeFoot', parseFloat(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                       />
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="flex justify-center gap-4 mt-6">
+              <button 
+                onClick={handleSaveBarcodeSettings}
+                disabled={saveLoading}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm px-6 py-3 rounded-2xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50"
+              >
+                {saveLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                حفظ المقاسات في الحساب (سحابياً)
+              </button>
+              <button 
+                onClick={handlePrintTestMaint}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-black text-sm px-6 py-3 rounded-2xl transition-all flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+              >
+                <Printer size={16} />
+                طباعة ملصق صيانة تجريبي
+              </button>
+              <button 
+                onClick={resetMaintSettings}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-sm px-6 py-3 rounded-2xl transition-all"
+              >
+                إعادة تعيين الافتراضي
+              </button>
+           </div>
         </div>
       )}
 

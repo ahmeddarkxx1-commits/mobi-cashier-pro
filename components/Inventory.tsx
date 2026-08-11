@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2, Camera, Scan, Sparkles, Printer } from 'lucide-react';
+import { Package, Search, Plus, Edit, Trash2, Filter, X, Settings2, CheckCircle2, Camera, Scan, Sparkles, Printer, Loader2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Product } from '../types';
 import { supabase } from '../supabaseClient';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import JsBarcode from 'jsbarcode';
-import { extractProductDetails } from '../utils/ai';
+import { extractProductDetails, extractProductsFromImage, ExtractedProduct } from '../utils/ai';
 
 interface InventoryProps {
   products: Product[];
@@ -55,6 +55,28 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
     const imeiMatch = displayName.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
     if (imeiMatch) displayName = imeiMatch[1].trim();
 
+    // Read local print settings first
+    let printSettings = {
+      paddingTop: 0,
+      paddingBottom: 3,
+      paddingLeft: 1,
+      paddingRight: 1,
+      scale: 100,
+      fontSizeSname: 9,
+      fontSizePname: 7,
+      fontSizePrice: 8,
+      barcodeWidth: 2,
+      barcodeHeight: 25
+    };
+    try {
+      const saved = localStorage.getItem('barcode_print_settings');
+      if (saved) {
+        printSettings = { ...printSettings, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error('Error reading print settings:', e);
+    }
+
     // Render barcode to Canvas then convert to PNG (guaranteed to print on thermal printers)
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
@@ -67,12 +89,12 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       const fmt = /^\d{13}$/.test(barcode) ? 'EAN13' : /^\d{8}$/.test(barcode) ? 'EAN8' : 'CODE128';
       JsBarcode(canvas, barcode, {
         format: fmt,
-        width: 1.5,
-        height: 18,
+        width: printSettings.barcodeWidth || 2,
+        height: printSettings.barcodeHeight || 25,
         displayValue: true,
         fontSize: 13,
         fontOptions: 'bold',
-        margin: 0,
+        margin: 2, // Quiet zone margin
         textMargin: 1,
         background: '#ffffff',
         lineColor: '#000000'
@@ -80,7 +102,16 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       barcodeDataURL = canvas.toDataURL('image/png');
     } catch {
       try {
-        JsBarcode(canvas, barcode, { format: 'CODE128', width: 1.5, height: 18, displayValue: true, fontSize: 13, margin: 0, background: '#ffffff', lineColor: '#000000' });
+        JsBarcode(canvas, barcode, { 
+          format: 'CODE128', 
+          width: printSettings.barcodeWidth || 2, 
+          height: printSettings.barcodeHeight || 25, 
+          displayValue: true, 
+          fontSize: 13, 
+          margin: 2, 
+          background: '#ffffff', 
+          lineColor: '#000000' 
+        });
         barcodeDataURL = canvas.toDataURL('image/png');
       } catch (e) {
         console.error('Barcode render failed:', e);
@@ -111,12 +142,30 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
       @page { size: 38mm 22mm; margin: 0; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
-      .wrap { width: 38mm; height: 22mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 0mm 1mm 3mm 1mm; text-align: center; }
-      .sname { font-size: 9pt; font-weight: 900; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: -1px; margin-top: 1px; }
-      .pname { font-size: 7pt; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: 0px; }
+      .wrap { 
+        width: 38mm; 
+        height: 22mm; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: ${printSettings.paddingTop}mm ${printSettings.paddingRight}mm ${printSettings.paddingBottom}mm ${printSettings.paddingLeft}mm; 
+        transform: scale(${printSettings.scale / 100});
+        transform-origin: top center;
+        text-align: center; 
+      }
+      .sname { font-size: ${printSettings.fontSizeSname}pt; font-weight: 900; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: -1px; margin-top: 1px; }
+      .pname { font-size: ${printSettings.fontSizePname}pt; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: 0px; }
       .bc { width: 100%; display: flex; align-items: center; justify-content: center; }
-      .bc img { max-width: 100%; height: auto; display: block; }
-      .price { font-size: 8pt; font-weight: 900; text-align: center; width: 100%; line-height: 1; margin-top: -2px; }
+      .bc img { 
+        max-width: 100%; 
+        height: auto; 
+        display: block; 
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;
+      }
+      .price { font-size: ${printSettings.fontSizePrice}pt; font-weight: 900; text-align: center; width: 100%; line-height: 1; margin-top: -2px; }
     </style>
   </head>
   <body>
@@ -151,7 +200,301 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
   const [isSaving, setIsSaving] = useState(false);
   const [aiInput, setAiInput] = useState('');
   const [isAiLoading, setIsAiLoading] = useState(false);
-  
+
+  const [showImageAiModal, setShowImageAiModal] = useState(false);
+  const [extractedProducts, setExtractedProducts] = useState<ExtractedProduct[]>([]);
+  const [isImageAnalyzing, setIsImageAnalyzing] = useState(false);
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
+  const [addedProductIds, setAddedProductIds] = useState<string[]>([]);
+
+  const generateBarcodeForCategory = (category: string, indexOffset: number = 0) => {
+    const prefixes: Record<string, string> = {
+      phone: '10',
+      charger: '20',
+      cable: '30',
+      wired_earphone: '40',
+      bluetooth_earphone: '41',
+      headphone: '42',
+      accessory: '43',
+      part: '50',
+      electronic: '90'
+    };
+    const prefix = prefixes[category] || '99';
+    const timeSec = String(Date.now()).slice(-4);
+    const rand = String(Math.floor(10 + Math.random() * 90));
+    return `${prefix}${timeSec}${rand}${indexOffset}`.slice(0, 8);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImageAnalyzing(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = (reader.result as string).split(',')[1];
+          const mimeType = file.type;
+
+          const allCats = customCategories.concat(partCategories);
+          const data = await extractProductsFromImage(base64String, mimeType, allCats);
+          
+          // Check for new categories and register them
+          let updatedCustom = [...customCategories];
+          let updatedParts = [...partCategories];
+          let customChanged = false;
+          let partsChanged = false;
+
+          data.forEach(prod => {
+            const catName = prod.category.trim();
+            if (!catName) return;
+
+            const isExisting = updatedCustom.includes(catName) || updatedParts.includes(catName);
+            if (!isExisting) {
+              if (prod.categoryType === 'part') {
+                updatedParts.push(catName);
+                partsChanged = true;
+              } else {
+                updatedCustom.push(catName);
+                customChanged = true;
+              }
+            }
+          });
+
+          if (customChanged) {
+            await saveCategories(updatedCustom, 'general');
+          }
+          if (partsChanged) {
+            await saveCategories(updatedParts, 'part');
+          }
+
+          // Generate barcodes for products that don't have them
+          const enrichedData = data.map((prod, idx) => {
+            if (!prod.barcode) {
+              return {
+                ...prod,
+                barcode: generateBarcodeForCategory(prod.category, idx)
+              };
+            }
+            return prod;
+          });
+
+          setExtractedProducts(enrichedData);
+          toast.success(`🤖 تم استخراج ${enrichedData.length} صنف بنجاح!`);
+        } catch (err: any) {
+          console.error(err);
+          toast.error(err.message || 'فشل تحليل الصورة');
+        } finally {
+          setIsImageAnalyzing(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء قراءة الملف');
+      setIsImageAnalyzing(false);
+    }
+  };
+
+  const handleSaveBulkProducts = async () => {
+    if (!shopId || extractedProducts.length === 0) return;
+    setIsBulkSaving(true);
+    try {
+      const payload = extractedProducts.map(prod => {
+        let finalName = prod.name.trim();
+        if (prod.imei) finalName += ` - IMEI: ${prod.imei.trim()}`;
+        if (prod.barcode) finalName += ` - Barcode: ${prod.barcode.trim()}`;
+
+        return {
+          name: finalName,
+          price: prod.price,
+          wholesale_price: prod.wholesale_price,
+          cost: prod.cost,
+          category: prod.category,
+          stock: prod.stock,
+          shop_id: shopId
+        };
+      });
+
+      const { data, error } = await supabase
+        .from('products')
+        .insert(payload)
+        .select();
+
+      if (error) throw error;
+
+      if (data) {
+        setProducts(prev => [...prev, ...data]);
+        const ids = data.map(p => p.id);
+        setAddedProductIds(ids);
+        toast.success(`تم حفظ ${data.length} صنف بنجاح!`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('حدث خطأ أثناء حفظ البضاعة: ' + err.message);
+    } finally {
+      setIsBulkSaving(false);
+    }
+  };
+
+  const handlePrintBulkAddedBarcodes = () => {
+    const selectedProducts = products.filter(p => addedProductIds.includes(p.id));
+    if (selectedProducts.length === 0) return;
+
+    // Read local print settings
+    let printSettings = {
+      paddingTop: 0,
+      paddingBottom: 3,
+      paddingLeft: 1,
+      paddingRight: 1,
+      scale: 100,
+      fontSizeSname: 9,
+      fontSizePname: 7,
+      fontSizePrice: 8,
+      barcodeWidth: 2,
+      barcodeHeight: 25
+    };
+    try {
+      const saved = localStorage.getItem('barcode_print_settings');
+      if (saved) {
+        printSettings = { ...printSettings, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error('Error reading print settings:', e);
+    }
+
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    if (!printWindow) {
+      toast.error('يرجى السماح بالنوافذ المنبثقة للطباعة');
+      return;
+    }
+
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
+    document.body.appendChild(hiddenDiv);
+
+    const productsWithBarcodes = selectedProducts.map(p => {
+      let displayName = p.name;
+      let barcode = '';
+      
+      const barcodeMatch = displayName.match(/(.+)\s*-\s*Barcode:\s*(\w+)/i);
+      if (barcodeMatch) {
+        displayName = barcodeMatch[1].trim();
+        barcode = barcodeMatch[2].trim();
+      }
+      const imeiMatch = displayName.match(/(.+)\s*-\s*IMEI:\s*(\w+)/i);
+      if (imeiMatch) displayName = imeiMatch[1].trim();
+
+      const canvas = document.createElement('canvas');
+      hiddenDiv.appendChild(canvas);
+
+      let barcodeDataURL = '';
+      if (barcode) {
+        try {
+          const fmt = /^\d{13}$/.test(barcode) ? 'EAN13' : /^\d{8}$/.test(barcode) ? 'EAN8' : 'CODE128';
+          JsBarcode(canvas, barcode, {
+            format: fmt,
+            width: printSettings.barcodeWidth || 2,
+            height: printSettings.barcodeHeight || 25,
+            displayValue: true,
+            fontSize: 13,
+            fontOptions: 'bold',
+            margin: 2,
+            textMargin: 1,
+            background: '#ffffff',
+            lineColor: '#000000'
+          });
+          barcodeDataURL = canvas.toDataURL('image/png');
+        } catch {
+          try {
+            JsBarcode(canvas, barcode, { format: 'CODE128', width: printSettings.barcodeWidth || 2, height: printSettings.barcodeHeight || 25, displayValue: true, fontSize: 13, margin: 2, background: '#ffffff', lineColor: '#000000' });
+            barcodeDataURL = canvas.toDataURL('image/png');
+          } catch (e) {
+            console.error('Barcode render failed:', e);
+          }
+        }
+      }
+
+      return {
+        displayName,
+        price: p.price,
+        barcodeDataURL
+      };
+    });
+
+    document.body.removeChild(hiddenDiv);
+
+    let htmlContent = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>طباعة كل الباركودات</title>
+    <style>
+      @page { size: 38mm 22mm; margin: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { width: 38mm; background: #fff; color: #000; font-family: Arial, sans-serif; }
+      .wrap { 
+        width: 38mm; 
+        height: 22mm; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: space-between; 
+        padding: ${printSettings.paddingTop}mm ${printSettings.paddingRight}mm ${printSettings.paddingBottom}mm ${printSettings.paddingLeft}mm; 
+        transform: scale(${printSettings.scale / 100});
+        transform-origin: top center;
+        text-align: center; 
+        page-break-after: always;
+      }
+      .wrap:last-child {
+        page-break-after: avoid;
+      }
+      .sname { font-size: ${printSettings.fontSizeSname}pt; font-weight: 900; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: -1px; margin-top: 1px; }
+      .pname { font-size: ${printSettings.fontSizePname}pt; font-weight: 700; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; line-height: 1; margin-bottom: 0px; }
+      .bc { width: 100%; display: flex; align-items: center; justify-content: center; }
+      .bc img { 
+        max-width: 100%; 
+        height: auto; 
+        display: block; 
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;
+      }
+      .price { font-size: ${printSettings.fontSizePrice}pt; font-weight: 900; text-align: center; width: 100%; line-height: 1; margin-top: -2px; }
+    </style>
+  </head>
+  <body>
+`;
+
+    productsWithBarcodes.forEach(item => {
+      htmlContent += `
+    <div class="wrap">
+      <div class="sname">${shopName || 'محل موبايلات'}</div>
+      <div class="pname">${item.displayName}</div>
+      <div class="bc">${item.barcodeDataURL ? `<img src="${item.barcodeDataURL}" />` : ''}</div>
+      <div class="price">السعر: ${item.price} ج</div>
+    </div>`;
+    });
+
+    htmlContent += `
+    <script>
+      var _p = false;
+      window.onload = function() {
+        if (_p) return; _p = true;
+        setTimeout(function() { window.print(); }, 800);
+      };
+      window.addEventListener('afterprint', function() {
+        setTimeout(function() { window.close(); }, 300);
+      });
+    </script>
+  </body>
+</html>`;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: 0,
@@ -256,6 +599,11 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             newSettings.part_categories = defaultParts;
             needsUpdate = true;
           }
+        }
+
+        // 3. Sync Barcode Print Settings
+        if (currentSettings.barcode_print_settings) {
+          localStorage.setItem('barcode_print_settings', JSON.stringify(currentSettings.barcode_print_settings));
         }
 
         if (needsUpdate) {
@@ -689,6 +1037,13 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
           >
             <Filter size={18} />
             إدارة التصنيفات
+          </button>
+          <button 
+            onClick={() => setShowImageAiModal(true)}
+            className="bg-purple-600 hover:bg-purple-500 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 shadow-lg w-full sm:w-auto active:scale-95 transition-all text-sm"
+          >
+            <Sparkles size={18} />
+            إدخال بضائع من صورة (AI)
           </button>
           <button 
             onClick={() => { setIsAdding(true); setEditingId(null); setNewProduct({name:'', price:0, wholesale_price:0, cost:0, category:'accessory', stock:0, imei:'', barcode:''}); }}
@@ -1321,6 +1676,242 @@ const Inventory: React.FC<InventoryProps> = ({ products, setProducts, shopId, sh
             >
               إلغاء وإغلاق
             </button>
+          </div>
+        </div>
+      )}
+
+      {showImageAiModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col">
+            <div className="p-6 border-b dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+              <div>
+                <h4 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                  <Sparkles size={24} className="text-purple-600 animate-pulse" />
+                  إدخال بضائع من صورة بالذكاء الاصطناعي (دفعة واحدة)
+                </h4>
+                <p className="text-xs font-bold text-slate-400 mt-1">ارفع صورة فاتورة، كشف أو كشكول مكتوب فيه البضاعة وسيقوم البوت باستخراجها وإضافتها وتجهيز الباركود لها فوراً.</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowImageAiModal(false);
+                  setExtractedProducts([]);
+                  setAddedProductIds([]);
+                }} 
+                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 rounded-xl transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar" dir="rtl">
+              {addedProductIds.length > 0 ? (
+                // Success View
+                <div className="flex flex-col items-center justify-center py-10 text-center space-y-5">
+                  <div className="w-20 h-20 bg-green-50 dark:bg-green-950/30 text-green-500 flex items-center justify-center rounded-full text-4xl shadow-inner">
+                    <CheckCircle2 size={40} />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black text-slate-800 dark:text-white">تم إضافة البضائع بنجاح! 🎉</h3>
+                    <p className="text-sm font-bold text-slate-500 max-w-md mx-auto">
+                      تم حفظ جميع المنتجات المستخرجة (عدد: {addedProductIds.length}) في مخزن المحل بنجاح وتوليد الأكواد الخاصة بها.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                      onClick={handlePrintBulkAddedBarcodes}
+                      className="bg-blue-600 hover:bg-blue-500 text-white font-black text-sm px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center gap-2"
+                    >
+                      <Printer size={18} />
+                      طباعة ملصقات الباركود لكل البضائع المضافة ({addedProductIds.length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowImageAiModal(false);
+                        setExtractedProducts([]);
+                        setAddedProductIds([]);
+                      }}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-sm px-6 py-4 rounded-2xl transition-all"
+                    >
+                      إغلاق
+                    </button>
+                  </div>
+                </div>
+              ) : extractedProducts.length > 0 ? (
+                // Review & Edit View
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center bg-purple-50 dark:bg-purple-950/20 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/40">
+                    <span className="text-xs font-black text-purple-700 dark:text-purple-400">يرجى مراجعة وتعديل البيانات المستخرجة إذا لزم الأمر قبل الحفظ:</span>
+                    <span className="bg-purple-600 text-white font-black text-xs px-3 py-1 rounded-full">{extractedProducts.length} أصناف مستخرجة</span>
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-850 rounded-2xl shadow-sm">
+                    <table className="w-full text-right border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-850 text-slate-500 text-[10px] font-black uppercase tracking-wider border-b dark:border-slate-850">
+                          <th className="p-3">اسم المنتج/القطعة</th>
+                          <th className="p-3">الفئة</th>
+                          <th className="p-3">سعر الشراء</th>
+                          <th className="p-3">سعر البيع</th>
+                          <th className="p-3">الكمية</th>
+                          <th className="p-3">الباركود</th>
+                          <th className="p-3 text-center">حذف</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y dark:divide-slate-850 text-xs font-medium">
+                        {extractedProducts.map((prod, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <td className="p-2">
+                              <input 
+                                type="text"
+                                value={prod.name}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  updated[idx].name = e.target.value;
+                                  setExtractedProducts(updated);
+                                }}
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-right"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <select
+                                value={prod.category}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  updated[idx].category = e.target.value;
+                                  // Update barcode prefix to match new category
+                                  updated[idx].barcode = generateBarcodeForCategory(e.target.value, idx);
+                                  setExtractedProducts(updated);
+                                }}
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-right"
+                              >
+                                {customCategories.concat(partCategories).map(cat => (
+                                  <option key={cat} value={cat} className="bg-white dark:bg-slate-900">{getCategoryLabel(cat)}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="p-2" style={{ width: '80px' }}>
+                              <input 
+                                type="number"
+                                value={prod.wholesale_price}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  const val = Number(e.target.value);
+                                  updated[idx].wholesale_price = val;
+                                  updated[idx].cost = val;
+                                  setExtractedProducts(updated);
+                                }}
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-center"
+                              />
+                            </td>
+                            <td className="p-2" style={{ width: '80px' }}>
+                              <input 
+                                type="number"
+                                value={prod.price}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  updated[idx].price = Number(e.target.value);
+                                  setExtractedProducts(updated);
+                                }}
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-center"
+                              />
+                            </td>
+                            <td className="p-2" style={{ width: '70px' }}>
+                              <input 
+                                type="number"
+                                value={prod.stock}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  updated[idx].stock = Number(e.target.value);
+                                  setExtractedProducts(updated);
+                                }}
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-center"
+                              />
+                            </td>
+                            <td className="p-2" style={{ width: '110px' }}>
+                              <input 
+                                type="text"
+                                value={prod.barcode}
+                                onChange={e => {
+                                  const updated = [...extractedProducts];
+                                  updated[idx].barcode = e.target.value;
+                                  setExtractedProducts(updated);
+                                }}
+                                placeholder="توليد تلقائي"
+                                className="bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 w-full font-bold focus:border-purple-500 outline-none text-center text-[10px]"
+                              />
+                            </td>
+                            <td className="p-2 text-center" style={{ width: '50px' }}>
+                              <button
+                                onClick={() => {
+                                  setExtractedProducts(prev => prev.filter((_, i) => i !== idx));
+                                }}
+                                className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      onClick={handleSaveBulkProducts}
+                      disabled={isBulkSaving || extractedProducts.length === 0}
+                      className="bg-purple-600 hover:bg-purple-500 text-white font-black text-sm px-8 py-3.5 rounded-2xl shadow-lg hover:shadow-xl disabled:opacity-50 transition-all flex items-center gap-2"
+                    >
+                      {isBulkSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                      حفظ وتأكيد إضافة كل الأصناف للمخزن ({extractedProducts.length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExtractedProducts([]);
+                      }}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-sm px-6 py-3.5 rounded-2xl transition-all"
+                    >
+                      إعادة رفع صورة
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Upload Zone View
+                <div className="flex flex-col items-center justify-center border-3 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-12 text-center transition-all bg-slate-50/50 dark:bg-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/25">
+                  {isImageAnalyzing ? (
+                    <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                      <Loader2 className="animate-spin text-purple-600" size={48} />
+                      <div className="space-y-1">
+                        <p className="font-black text-slate-700 dark:text-white">جاري تحليل وفك خطوط الفاتورة/الورقة...</p>
+                        <p className="text-[10px] font-bold text-slate-400">سوف يستغرق هذا بضع ثوانٍ لقراءة الأصناف والأسعار والكميات بدقة.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      <div className="w-16 h-16 bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center rounded-2xl mx-auto shadow-inner">
+                        <Camera size={32} />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="font-black text-lg text-slate-700 dark:text-white">ارفع أو صور ورقة البضائع المكتوبة</h3>
+                        <p className="text-xs font-bold text-slate-400 max-w-sm mx-auto">
+                          تأكد من وضوح الصورة وكتابة الاسم بجانبه الكمية والسعر، وسيقوم نظام الذكاء الاصطناعي باستخراجهم تلقائياً.
+                        </p>
+                      </div>
+                      <label className="inline-block bg-purple-600 hover:bg-purple-500 text-white font-black text-sm px-8 py-3.5 rounded-2xl cursor-pointer shadow-lg hover:shadow-xl active:scale-95 transition-all">
+                        اختر الصورة / التقط بالكاميرا
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          capture="environment"
+                          onChange={handleImageUpload} 
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

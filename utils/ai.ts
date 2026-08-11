@@ -56,6 +56,7 @@ export interface ExtractedProduct {
   wholesale_price: number;
   cost: number;
   category: string;
+  categoryType?: 'general' | 'part';
   stock: number;
   barcode: string;
   imei: string;
@@ -184,5 +185,80 @@ ${JSON.stringify(data.transactionsSummary, null, 2)}
   } catch (error) {
     console.error('AI Reports Parse Error:', error);
     throw new Error('فشل الذكاء الاصطناعي في تحليل التقرير، يرجى المحاولة لاحقاً.');
+  }
+}
+
+export async function extractProductsFromImage(
+  base64Image: string, 
+  mimeType: string,
+  existingCategories: string[]
+): Promise<ExtractedProduct[]> {
+  if (!apiKey) {
+    throw new Error('API Key is missing! تأكد من إضافة GEMINI_API_KEY');
+  }
+
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+  const prompt = `
+أنت مساعد ذكي مخصص لمراجعة وفك خطوط الفواتير الورقية أو الكشوفات المكتوبة بخط اليد أو المطبوعة لمحلات الموبايلات والصيانة.
+وظيفتك هي استخراج قائمة بالمنتجات والبضائع المكتوبة في الصورة المرفقة.
+اليك قائمة بالتصنيفات الموجودة حالياً بالمحل: ${JSON.stringify(existingCategories)}
+
+يجب عليك تحديد الفئة (category) لكل صنف مستخرج:
+- إذا كان الصنف يتبع أحد التصنيفات الموجودة حالياً بالمحل، استخدم اسم التصنيف المكتوب بالإنجليزية أو العربية كما هو في القائمة المرفقة.
+- إذا كان الصنف لا يطابق أي تصنيف موجود حالياً، قم باقتراح تصنيف جديد مناسب جداً له باللغة العربية (مثال: "جرابات"، "شواحن سيارة"، "ساعات ذكية") واجعله هو قيمة الحقل "category".
+- حدد أيضاً نوع التصنيف (categoryType) ليكون "general" للبضائع والإكسسوارات العامة، أو "part" لقطع غيار الصيانة والورشة.
+
+المطلوب إرجاع JSON يحتوي على مصفوفة (Array) من المنتجات المستخرجة بالتنسيق التالي حصراً، بدون أي نصوص أخرى أو تنسيقات Markdown (لا تستخدم \`\`\`json):
+[
+  {
+    "name": "اسم المنتج أو قطعة الغيار بالكامل بوضوح (مثال: جراب ايفون 11، شاحن سامسونج 25 واط، شاشة ردمي نوت 10)",
+    "price": 0, // سعر البيع للمستهلك (إذا لم تجده، خمن سعراً مناسباً للبيع بناءً على سعر الشراء/الجملة بإضافة هامش ربح 20-30%)
+    "wholesale_price": 0, // سعر الشراء / الجملة من المورد (إذا ذكر، وإذا لم يذكر اجعله 75% من سعر البيع)
+    "cost": 0, // تكلفة المنتج (اجعلها مساوية لسعر الشراء/الجملة)
+    "category": "اسم التصنيف من القائمة أو تصنيف جديد مناسب",
+    "categoryType": "general", // "general" للبضائع والإكسسوارات، أو "part" لقطع غيار الصيانة والورشة
+    "stock": 1, // الكمية أو العدد المكتوب بجانب الصنف (الافتراضي 1)
+    "barcode": "", // رقم الباركود المكتوب بجانب الصنف إن وجد، وإذا لم يوجد اتركه فارغاً ""
+    "imei": "" // رقم الـ IMEI الخاص بالهواتف إن وجد، وإذا لم يوجد اتركه فارغاً ""
+  }
+]
+`;
+
+  try {
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64Image,
+          mimeType: mimeType
+        }
+      }
+    ]);
+    
+    let textResponse = result.response.text().trim();
+    
+    // Clean up if it contains markdown code blocks
+    textResponse = textResponse.replace(/^```json/i, '').replace(/^```/i, '').replace(/```$/i, '').trim();
+
+    const parsedData = JSON.parse(textResponse);
+    if (!Array.isArray(parsedData)) {
+      return [];
+    }
+
+    return parsedData.map(item => ({
+      name: item.name || '',
+      price: Number(item.price) || 0,
+      wholesale_price: Number(item.wholesale_price) || 0,
+      cost: Number(item.cost) || Number(item.wholesale_price) || 0,
+      category: item.category || 'accessory',
+      categoryType: item.categoryType || 'general',
+      stock: Number(item.stock) || 1,
+      barcode: item.barcode || '',
+      imei: item.imei || ''
+    }));
+  } catch (error) {
+    console.error('AI Image Parse Error:', error);
+    throw new Error('مقدرتش أقرأ الصورة بشكل صحيح، تأكد من وضوح الصورة وتفاصيل البضاعة وسعرها والعدد.');
   }
 }

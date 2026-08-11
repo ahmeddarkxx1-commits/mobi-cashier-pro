@@ -193,6 +193,25 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
   useEffect(() => {
     if (activeTab === 'parts_sale') fetchRecentSales();
   }, [activeTab, shopId]);
+
+  useEffect(() => {
+    if (!shopId) return;
+    const loadMaintSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('shops')
+          .select('settings')
+          .eq('id', shopId)
+          .single();
+        if (data?.settings?.maint_print_settings) {
+          localStorage.setItem('maint_print_settings', JSON.stringify(data.settings.maint_print_settings));
+        }
+      } catch (e) {
+        console.error('Failed to load maintenance settings:', e);
+      }
+    };
+    loadMaintSettings();
+  }, [shopId]);
   
   const addNotification = (message: string, type: Notification['type'] = 'info') => {
     if (type === 'success') toast.success(message);
@@ -209,6 +228,28 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     const costText = `${job.cost} ج`;
     const paidText = job.paidAmount > 0 ? ` (مقدم: ${job.paidAmount}ج)` : '';
 
+    // Read local maintenance print settings if they exist
+    let maintSettings = {
+      paddingTop: 1,
+      paddingBottom: 1,
+      paddingLeft: 1,
+      paddingRight: 1,
+      scale: 100,
+      fontSizeSname: 8,
+      fontSizeDev: 7,
+      fontSizeCust: 6.5,
+      fontSizeIssue: 6.5,
+      fontSizeFoot: 6
+    };
+    try {
+      const saved = localStorage.getItem('maint_print_settings');
+      if (saved) {
+        maintSettings = { ...maintSettings, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      console.error('Error reading maintenance print settings:', e);
+    }
+
     // Render barcode to Canvas → PNG (guaranteed print on thermal printers)
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;';
@@ -220,11 +261,13 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
     try {
       JsBarcode(canvas, trackingCode, {
         format: 'CODE128',
-        width: 2.5,
-        height: 50,
+        width: 1.5,
+        height: 18,
         displayValue: true,
-        fontSize: 14,
-        margin: 8,
+        fontSize: 13,
+        fontOptions: 'bold',
+        margin: 0,
+        textMargin: 1,
         background: '#ffffff',
         lineColor: '#000000'
       });
@@ -249,14 +292,25 @@ const MaintenanceCenter: React.FC<MaintenanceCenterProps> = ({
       @page { size: 38mm 22mm; margin: 0; }
       * { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { width: 38mm; height: 22mm; background: #fff; color: #000; overflow: hidden; font-family: Arial, sans-serif; }
-      .wrap { width: 38mm; height: 22mm; display: flex; flex-direction: column; align-items: center; padding: 1mm; gap: 0.5mm; text-align: center; }
-      .sname { font-size: 8pt; font-weight: 900; text-align: center; width: 100%; line-height: 1.1; border-bottom: 1px dashed #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; }
-      .dev { font-size: 7pt; font-weight: 900; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
-      .cust { font-size: 6.5pt; font-weight: 700; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
-      .issue { font-size: 6.5pt; font-weight: 900; width: 100%; background: #000; color: #fff; padding: 0 2px; border-radius: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
+      .wrap { 
+        width: 38mm; 
+        height: 22mm; 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        padding: ${maintSettings.paddingTop}mm ${maintSettings.paddingRight}mm ${maintSettings.paddingBottom}mm ${maintSettings.paddingLeft}mm; 
+        transform: scale(${maintSettings.scale / 100});
+        transform-origin: top center;
+        text-align: center; 
+        gap: 0.5mm;
+      }
+      .sname { font-size: ${maintSettings.fontSizeSname}pt; font-weight: 900; text-align: center; width: 100%; line-height: 1.1; border-bottom: 1px dashed #000; padding-bottom: 0.5mm; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; }
+      .dev { font-size: ${maintSettings.fontSizeDev}pt; font-weight: 900; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .cust { font-size: ${maintSettings.fontSizeCust}pt; font-weight: 700; width: 100%; line-height: 1.1; white-space: nowrap; overflow: hidden; }
+      .issue { font-size: ${maintSettings.fontSizeIssue}pt; font-weight: 900; width: 100%; background: #000; color: #fff; padding: 0 2px; border-radius: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; }
       .bc { width: 100%; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 0; }
       .bc img { max-width: 100%; max-height: 100%; display: block; }
-      .foot { font-size: 6pt; font-weight: 900; width: 100%; display: flex; justify-content: space-between; margin-top: auto; }
+      .foot { font-size: ${maintSettings.fontSizeFoot}pt; font-weight: 900; width: 100%; display: flex; justify-content: space-between; margin-top: auto; }
     </style>
   </head>
   <body>
