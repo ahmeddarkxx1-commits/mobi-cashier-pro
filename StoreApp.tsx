@@ -31,7 +31,19 @@ interface StoreAppProps {
 const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setAppConfig, tenantId, shopPlan = 'BASIC', globalNotifications = [] }) => {
   const [activeSection, setActiveSection] = useState<StoreSection>(() => {
     const saved = localStorage.getItem('activeSection');
-    return (saved as StoreSection) || 'cashier';
+    const allowed = [
+      { id: 'cashier', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
+      { id: 'maintenance_pos', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
+      { id: 'inventory', roles: ['OWNER', 'MANAGER'] },
+      { id: 'missing_goods', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
+      { id: 'finance', roles: ['OWNER', 'MANAGER'] },
+      { id: 'debts', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
+      { id: 'reports', roles: ['OWNER', 'MANAGER', 'CASHIER'] },
+      { id: 'settings', roles: ['OWNER'] }
+    ].filter(item => item.roles.includes(userRole)).map(item => item.id);
+
+    if (saved && allowed.includes(saved)) return saved as StoreSection;
+    return (allowed[0] || 'cashier') as StoreSection;
   });
 
   useEffect(() => {
@@ -629,14 +641,14 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
           <div className="max-w-6xl mx-auto pb-20 lg:pb-0">
             <ErrorBoundary>
               <React.Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>}>
-                {activeSection === 'cashier' && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
-                {activeSection === 'maintenance_pos' && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} shopName={shopName} />}
-                {activeSection === 'inventory' && <Inventory products={products} setProducts={setProducts} shopId={shopId} shopName={shopName} />}
-                {activeSection === 'finance' && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
-                { activeSection === 'reports' && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
-                { activeSection === 'debts' && <Debts shopId={shopId} addTransaction={addTransaction} /> }
-                { activeSection === 'missing_goods' && <MissingGoods products={products} shopId={shopId} shopName={shopName} /> }
-                { activeSection === 'settings' && (
+                {activeSection === 'cashier' && menuItems.some(i => i.id === 'cashier') && <Cashier products={products} setProducts={setProducts} addTransaction={addTransaction} transferSettings={transferSettings} shopId={shopId} appName={appConfig.appName} />}
+                {activeSection === 'maintenance_pos' && menuItems.some(i => i.id === 'maintenance_pos') && <MaintenanceCenter jobs={maintenanceJobs} setJobs={setMaintenanceJobs} addTransaction={addTransaction} products={products} setProducts={setProducts} userRole={userRole} shopId={shopId} shopName={shopName} />}
+                {activeSection === 'inventory' && menuItems.some(i => i.id === 'inventory') && <Inventory products={products} setProducts={setProducts} shopId={shopId} shopName={shopName} />}
+                {activeSection === 'finance' && menuItems.some(i => i.id === 'finance') && <Finance transactions={transactions} addTransaction={addTransaction} expenses={expenses} setExpenses={setExpenses} appName={appConfig.appName} />}
+                { activeSection === 'reports' && menuItems.some(i => i.id === 'reports') && <Reports transactions={transactions} expenses={expenses} maintenanceJobs={maintenanceJobs} /> }
+                { activeSection === 'debts' && menuItems.some(i => i.id === 'debts') && <Debts shopId={shopId} addTransaction={addTransaction} /> }
+                { activeSection === 'missing_goods' && menuItems.some(i => i.id === 'missing_goods') && <MissingGoods products={products} shopId={shopId} shopName={shopName} /> }
+                { activeSection === 'settings' && menuItems.some(i => i.id === 'settings') && (
                   <div className="pb-20">
                     <SettingsView 
                       settings={transferSettings} 

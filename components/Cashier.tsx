@@ -127,7 +127,7 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
     const categoryName = (cat || '').toLowerCase();
     const partKeywords = [
       'part', 'شاش', 'فلات', 'بطار', 'باغ', 'سوكت', 'كاميرا صيانة', 'ورشه', 'ورشة',
-      'battery', 'screen', 'display', 'lcd', 'cable', 'charging', 'flex', 'camera', 'spare', 'repair'
+      'battery', 'screen', 'display', 'lcd', 'charging', 'flex', 'camera', 'spare', 'repair'
     ];
     return partCategories.some((c: string) => c.toLowerCase() === categoryName) || 
            partKeywords.some(k => categoryName.includes(k));
@@ -182,6 +182,10 @@ const Cashier: React.FC<CashierProps> = ({ products, setProducts, addTransaction
          return;
       }
       const actualPaid = Number(debtPaidAmount) || 0;
+      if (actualPaid < 0) {
+         toast.error('المبلغ المدفوع لا يمكن أن يكون سالباً!');
+         return;
+      }
       if (actualPaid > total) {
          toast.error('المبلغ المدفوع أكبر من إجمالي البيعة!');
          return;

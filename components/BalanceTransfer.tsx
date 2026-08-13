@@ -50,6 +50,12 @@ const BalanceTransfer: React.FC<BalanceTransferProps> = ({ settings, addTransact
     e.preventDefault();
     if (!amount || !customerNumber) return;
 
+    const numAmount = parseFloat(amount) || 0;
+    if (numAmount <= 0) {
+      alert('المبلغ يجب أن يكون أكبر من الصفر!');
+      return;
+    }
+
     const opLabel = operationType === 'send' ? 'إرسال' : 'استلام';
     
     addTransaction({

@@ -40,7 +40,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     scale: 100,
     fontSizeSname: 9,
     fontSizePname: 7,
-    fontSizePrice: 8
+    fontSizePrice: 8,
+    barcodeWidth: 2,
+    barcodeHeight: 25
   });
 
   const [maintPrintSettings, setMaintPrintSettings] = useState({
@@ -53,7 +55,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     fontSizeDev: 7,
     fontSizeCust: 6.5,
     fontSizeIssue: 6.5,
-    fontSizeFoot: 6
+    fontSizeFoot: 6,
+    barcodeWidth: 1.5,
+    barcodeHeight: 18
   });
 
   useEffect(() => {
@@ -91,7 +95,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
       scale: 100,
       fontSizeSname: 9,
       fontSizePname: 7,
-      fontSizePrice: 8
+      fontSizePrice: 8,
+      barcodeWidth: 2,
+      barcodeHeight: 25
     };
     setBarcodePrintSettings(defaults);
     localStorage.setItem('barcode_print_settings', JSON.stringify(defaults));
@@ -114,7 +120,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
       fontSizeDev: 7,
       fontSizeCust: 6.5,
       fontSizeIssue: 6.5,
-      fontSizeFoot: 6
+      fontSizeFoot: 6,
+      barcodeWidth: 1.5,
+      barcodeHeight: 18
     };
     setMaintPrintSettings(defaults);
     localStorage.setItem('maint_print_settings', JSON.stringify(defaults));

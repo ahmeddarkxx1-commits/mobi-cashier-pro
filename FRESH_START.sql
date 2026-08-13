@@ -27,13 +27,81 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_id TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_wait_until TIMESTAMPTZ;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_ip TEXT;
 
--- الخطوة 4: إعادة تفعيل RLS بـ policies بسيطة وصحيحة
+-- الخطوة 4: إعادة تفعيل RLS وكتابة سياسات عزل المحلات والمستخدمين (Tenant Isolation)
 ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.maintenance_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.debts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
--- السماح للكل بالقراءة والكتابة (أبسط حل يعمل 100%)
-CREATE POLICY "full_access_shops" ON public.shops FOR ALL TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "full_access_profiles" ON public.profiles FOR ALL TO authenticated USING (true) WITH CHECK (true);
+-- حذف أي سياسات قديمة إن وجدت
+DROP POLICY IF EXISTS "full_access_shops" ON public.shops;
+DROP POLICY IF EXISTS "full_access_profiles" ON public.profiles;
+DROP POLICY IF EXISTS "products_tenant_isolation" ON public.products;
+DROP POLICY IF EXISTS "maint_tenant_isolation" ON public.maintenance_jobs;
+DROP POLICY IF EXISTS "debts_tenant_isolation" ON public.debts;
+DROP POLICY IF EXISTS "trans_tenant_isolation" ON public.transactions;
+
+-- دوال مساعدة معرّفة كـ SECURITY DEFINER لمنع التكرار اللانهائي (Infinite Recursion)
+CREATE OR REPLACE FUNCTION public.get_user_tenant_id()
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT tenant_id FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.profiles WHERE id = auth.uid();
+$$;
+
+-- سياسات جدول المحلات (shops)
+CREATE POLICY "shops_select_policy" ON public.shops FOR SELECT TO authenticated
+  USING (owner_id = auth.uid() OR id = public.get_user_tenant_id());
+CREATE POLICY "shops_insert_policy" ON public.shops FOR INSERT TO authenticated
+  WITH CHECK (owner_id = auth.uid());
+CREATE POLICY "shops_update_policy" ON public.shops FOR UPDATE TO authenticated
+  USING (owner_id = auth.uid()) WITH CHECK (owner_id = auth.uid());
+CREATE POLICY "shops_delete_policy" ON public.shops FOR DELETE TO authenticated
+  USING (owner_id = auth.uid());
+
+-- سياسات جدول الملفات الشخصية (profiles)
+CREATE POLICY "profiles_select_policy" ON public.profiles FOR SELECT TO authenticated
+  USING (id = auth.uid() OR tenant_id = public.get_user_tenant_id());
+CREATE POLICY "profiles_insert_policy" ON public.profiles FOR INSERT TO authenticated
+  WITH CHECK (id = auth.uid() OR (tenant_id = public.get_user_tenant_id() AND public.get_user_role() = 'OWNER'));
+CREATE POLICY "profiles_update_policy" ON public.profiles FOR UPDATE TO authenticated
+  USING (id = auth.uid() OR (tenant_id = public.get_user_tenant_id() AND public.get_user_role() = 'OWNER'))
+  WITH CHECK (id = auth.uid() OR (tenant_id = public.get_user_tenant_id() AND public.get_user_role() = 'OWNER'));
+CREATE POLICY "profiles_delete_policy" ON public.profiles FOR DELETE TO authenticated
+  USING (tenant_id = public.get_user_tenant_id() AND public.get_user_role() = 'OWNER');
+
+-- سياسات جدول المنتجات (products)
+CREATE POLICY "products_all_policy" ON public.products FOR ALL TO authenticated
+  USING (shop_id = public.get_user_tenant_id())
+  WITH CHECK (shop_id = public.get_user_tenant_id());
+
+-- سياسات جدول أعمال الصيانة (maintenance_jobs)
+CREATE POLICY "maint_all_policy" ON public.maintenance_jobs FOR ALL TO authenticated
+  USING (shop_id = public.get_user_tenant_id())
+  WITH CHECK (shop_id = public.get_user_tenant_id());
+
+-- سياسات جدول الديون والآجل (debts)
+CREATE POLICY "debts_all_policy" ON public.debts FOR ALL TO authenticated
+  USING (shop_id = public.get_user_tenant_id())
+  WITH CHECK (shop_id = public.get_user_tenant_id());
+
+-- سياسات جدول المعاملات المالية (transactions)
+CREATE POLICY "trans_all_policy" ON public.transactions FOR ALL TO authenticated
+  USING (shop_id = public.get_user_tenant_id())
+  WITH CHECK (shop_id = public.get_user_tenant_id());
 
 -- الخطوة 5: بناء الـ Trigger الجديد الصحيح
 CREATE OR REPLACE FUNCTION public.handle_new_user()
