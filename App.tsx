@@ -435,13 +435,29 @@ const App: React.FC = () => {
     }
     if (!isSilent) setLoading(true);
     try {
-      const { data: profile, error } = await supabase
+      const { data: profileRaw, error } = await supabase
         .from('profiles')
         .select('id, full_name, role, tenant_id, device_id, device_name, is_locked, lock_reason, max_devices, last_ip, last_seen, device_wait_until')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      // إذا لم يوجد ملف شخصي → أنشئه تلقائياً
+      let profile = profileRaw;
+      if (!profileRaw && !error) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const email = user?.email || '';
+        const isAdmin = email.startsWith('admin') || email.startsWith('superadmin');
+        const newRole = isAdmin ? 'SUPER_ADMIN' : 'OWNER';
+        const { data: created } = await supabase.from('profiles').insert({
+          id: userId,
+          full_name: user?.user_metadata?.full_name || email.split('@')[0],
+          role: newRole,
+          tenant_id: null
+        }).select().maybeSingle();
+        profile = created;
+      }
+
+      if (error && !profile) {
         setUserRole('OWNER');
         setIsLocked(true);
         setLockMessage(`خطأ في الاتصال بقاعدة البيانات: ${error.message} (${error.code}). يرجى التواصل مع الدعم.`);
