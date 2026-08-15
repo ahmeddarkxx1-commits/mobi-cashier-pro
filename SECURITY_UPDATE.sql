@@ -125,3 +125,47 @@ CREATE POLICY "notif_select_policy" ON public.app_notifications FOR SELECT TO au
 CREATE POLICY "notif_all_policy" ON public.app_notifications FOR ALL TO authenticated
   USING (public.get_user_role() = 'SUPER_ADMIN')
   WITH CHECK (public.get_user_role() = 'SUPER_ADMIN');
+
+-- 13. مزامنة الحسابات الموجودة (إنشاء shops وprofiles للي مش موجودة)
+DO $$
+DECLARE
+  u RECORD;
+  sid UUID;
+  v_role TEXT;
+BEGIN
+  FOR u IN SELECT * FROM auth.users LOOP
+    -- تحديد الدور بناءً على البريد الإلكتروني
+    IF u.email LIKE 'admin%' OR u.email LIKE 'superadmin%' THEN
+      v_role := 'SUPER_ADMIN';
+    ELSE
+      v_role := 'OWNER';
+    END IF;
+
+    -- تحقق إذا كان للمستخدم غير السوبر أدمن محل
+    IF v_role <> 'SUPER_ADMIN' THEN
+      IF NOT EXISTS (SELECT 1 FROM public.shops WHERE owner_id = u.id) THEN
+        INSERT INTO public.shops (name, owner_id, owner_email, plan, status, duration, expiry_date)
+        VALUES (
+          COALESCE(u.raw_user_meta_data->>'shop_name', 'محل ' || SPLIT_PART(u.email, '@', 1)),
+          u.id, u.email, 'BASIC', 'pending', '3_days_trial', NOW() + INTERVAL '3 days'
+        ) RETURNING id INTO sid;
+      ELSE
+        SELECT id INTO sid FROM public.shops WHERE owner_id = u.id LIMIT 1;
+      END IF;
+    ELSE
+      sid := NULL;
+    END IF;
+
+    -- تحقق إذا كان للمستخدم ملف شخصي (profile)
+    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = u.id) THEN
+      INSERT INTO public.profiles (id, full_name, role, tenant_id)
+      VALUES (u.id, COALESCE(u.raw_user_meta_data->>'full_name', SPLIT_PART(u.email, '@', 1)), v_role, sid)
+      ON CONFLICT (id) DO NOTHING;
+    ELSE
+      -- تحديث tenant_id إذا كان فارغاً للملاك
+      IF v_role <> 'SUPER_ADMIN' THEN
+        UPDATE public.profiles SET tenant_id = sid WHERE id = u.id AND tenant_id IS NULL;
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
