@@ -69,42 +69,62 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         });
         if (error) throw error;
         
-        // Supabase returns a session if email confirmation is disabled
         if (data.session) {
           alert('تم التسجيل بنجاح! يرجى تسجيل الدخول للحصول على جلسة عمل آمنة.');
           setIsSignUp(false);
         } else {
-          // If email confirmation is required but we just want to login right away if disabled
           alert('تم التسجيل! إذا تم إيقاف تأكيد البريد، يمكنك تسجيل الدخول الآن.');
           setIsSignUp(false);
         }
       } else {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
+        // أولاً: جرب الـ BFF API (على Vercel)
+        let usedBFF = false;
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
 
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || 'فشل تسجيل الدخول');
+          const contentType = res.headers.get('content-type') || '';
+          if (res.ok && contentType.includes('application/json')) {
+            const resData = await res.json();
+            await supabase.auth.setSession({
+              access_token: resData.access_token,
+              refresh_token: ''
+            });
+            await supabase.from('profiles')
+              .update({ last_ip: userIp, last_seen: new Date().toISOString() })
+              .eq('id', resData.user.id);
+            const mockSession = { user: resData.user, access_token: resData.access_token } as any;
+            onLoginSuccess(mockSession);
+            usedBFF = true;
+          } else if (!res.ok && contentType.includes('application/json')) {
+            // خطأ محدد من السيرفر (مثل كلمة مرور خاطئة)
+            const errData = await res.json();
+            throw new Error(errData.error || 'فشل تسجيل الدخول');
+          }
+          // إذا رجع HTML (لوكالهوست بدون vercel dev) → نكمل للـ fallback
+        } catch (apiErr: any) {
+          // إذا كان الخطأ من السيرفر (مثل بيانات خاطئة) → أظهره مباشرة
+          if (apiErr.message && !apiErr.message.includes('JSON') && !apiErr.message.includes('fetch')) {
+            throw apiErr;
+          }
+          // وإلا → استخدم Supabase مباشرة كـ fallback للوكالهوست
         }
 
-        const resData = await res.json();
+        // Fallback: تسجيل دخول مباشر عبر Supabase (للوكالهوست أو عند فشل API)
+        if (!usedBFF) {
+          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          if (!data.session) throw new Error('فشل استرجاع الجلسة');
 
-        // Authenticate browser Supabase client in memory
-        await supabase.auth.setSession({
-          access_token: resData.access_token,
-          refresh_token: ''
-        });
+          await supabase.from('profiles')
+            .update({ last_ip: userIp, last_seen: new Date().toISOString() })
+            .eq('id', data.user.id);
 
-        // Update last IP and last seen in profiles table instead of user_metadata
-        await supabase.from('profiles')
-          .update({ last_ip: userIp, last_seen: new Date().toISOString() })
-          .eq('id', resData.user.id);
-
-        const mockSession = { user: resData.user, access_token: resData.access_token } as any;
-        onLoginSuccess(mockSession);
+          onLoginSuccess(data.session);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'فشل الاتصال. تأكد من البيانات.');
@@ -112,6 +132,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 font-['Cairo'] flex items-center justify-center p-4 relative overflow-hidden" dir="rtl">
