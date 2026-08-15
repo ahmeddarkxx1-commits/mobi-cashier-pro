@@ -42,7 +42,9 @@ DROP POLICY IF EXISTS "debts_all_policy" ON public.debts;
 DROP POLICY IF EXISTS "trans_all_policy" ON public.transactions;
 
 DROP POLICY IF EXISTS "invites_all_policy" ON public.shop_invites;
+DROP POLICY IF EXISTS "config_select_policy" ON public.app_config;
 DROP POLICY IF EXISTS "config_all_policy" ON public.app_config;
+DROP POLICY IF EXISTS "notif_select_policy" ON public.app_notifications;
 DROP POLICY IF EXISTS "notif_all_policy" ON public.app_notifications;
 
 -- 3. إنشاء دوال مساعدة معرّفة كـ SECURITY DEFINER للوصول المعزول
