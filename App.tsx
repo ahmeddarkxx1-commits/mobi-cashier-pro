@@ -134,38 +134,44 @@ const App: React.FC = () => {
     // Safety net: never show black screen for more than 5 seconds
     const safetyTimeout = setTimeout(() => setLoading(false), 5000);
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(safetyTimeout);
-      setSession(session);
-      if (session) {
-        setAppState('app');
-        fetchUserProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    }).catch(err => {
-      clearTimeout(safetyTimeout);
-      console.error('Supabase session loading failed:', err);
-      setLoading(false);
-    });
+    const checkSession = async (isInitial = false) => {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (!res.ok) throw new Error('Unauthorized');
+        const data = await res.json();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (_event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') return;
-      setSession(session);
-      if (session) {
-        if (appState === 'login' || appState === 'landing') {
-          setAppState('app');
+        if (isInitial) {
+          clearTimeout(safetyTimeout);
         }
-        fetchUserProfile(session.user.id);
-      } else {
+
+        // Authenticate the browser Supabase client in memory
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: ''
+        });
+
+        const mockSession = { user: data.user, access_token: data.access_token } as any;
+        setSession(mockSession);
+        setAppState('app');
+        fetchUserProfile(data.user.id);
+      } catch (err) {
+        if (isInitial) {
+          clearTimeout(safetyTimeout);
+        }
+        setSession(null);
         setAppState('landing');
         setLoading(false);
         setIsWaitingForDevice(false);
       }
-    });
+    };
+
+    checkSession(true);
+
+    // Silent background token refresh every 10 minutes
+    const refreshInterval = setInterval(() => checkSession(false), 10 * 60 * 1000);
 
     return () => {
-      subscription.unsubscribe();
+      clearInterval(refreshInterval);
     };
   }, []);
 
@@ -206,7 +212,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchGlobalData = async () => {
       try {
-        const { data: config } = await supabase.from('app_config').select('*').limit(1).maybeSingle();
+        const { data: config } = await supabase.from('app_config').select('id, maintenance_mode, maintenance_message, global_message').limit(1).maybeSingle();
         if (config) {
           setIsMaintenance(config.maintenance_mode);
           setMaintenanceMessage(config.maintenance_message);
@@ -215,7 +221,7 @@ const App: React.FC = () => {
             globalMessage: config.global_message || ''
           }));
         }
-        const { data: notify } = await supabase.from('app_notifications').select('*').eq('is_active', true).order('created_at', { ascending: false });
+        const { data: notify } = await supabase.from('app_notifications').select('id, title, message, type, is_active, created_at').eq('is_active', true).order('created_at', { ascending: false });
         if (notify) setGlobalNotifications(notify);
       } catch (err) {
         console.warn('Could not fetch global app config (offline mode):', err);
@@ -412,7 +418,7 @@ const App: React.FC = () => {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, role, tenant_id, device_id, device_name, is_locked, lock_reason, max_devices, last_ip, last_seen, device_wait_until')
         .eq('id', userId)
         .single();
 
@@ -518,8 +524,13 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (session?.user?.id) {
-      await supabase.from('profiles').update({ last_seen: null }).eq('id', session.user.id);
+    try {
+      if (session?.user?.id) {
+        await supabase.from('profiles').update({ last_seen: null }).eq('id', session.user.id);
+      }
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout API failed:', e);
     }
     await supabase.auth.signOut();
     setSession(null);

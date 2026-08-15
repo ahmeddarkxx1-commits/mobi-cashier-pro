@@ -167,7 +167,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
     const fetchNotifications = async () => {
       const { data } = await supabase
         .from('shop_notifications')
-        .select('*')
+        .select('id, message, is_read, created_at, shop_id')
         .eq('shop_id', shopId)
         .eq('is_read', false)
         .order('created_at', { ascending: false });
@@ -213,7 +213,7 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
       if (shopId) {
         const { data } = await supabase
           .from('shop_notifications')
-          .select('*')
+          .select('id, message, is_read, created_at, shop_id')
           .eq('shop_id', shopId)
           .eq('is_read', false);
         if (data) shopNotifs = data;
@@ -287,9 +287,9 @@ const StoreApp: React.FC<StoreAppProps> = ({ userRole, onLogout, appConfig, setA
 
       // Fetch all data in parallel
       const [prodData, transData, jobData, shopData] = await Promise.all([
-        supabase.from('products').select('*').eq('shop_id', sId),
-        supabase.from('transactions').select('*').eq('shop_id', sId).order('date', { ascending: false }),
-        supabase.from('maintenance_jobs').select('*').eq('shop_id', sId),
+        supabase.from('products').select('id, name, price, wholesale_price, cost, category, stock, image, shop_id').eq('shop_id', sId),
+        supabase.from('transactions').select('id, type, medium, amount, cost, profit, description, date, category, shop_id, cashier_name').eq('shop_id', sId).order('date', { ascending: false }),
+        supabase.from('maintenance_jobs').select('id, customerName, customerPhone, phoneModel, issue, notes, partsUsed, missingParts, cost, paidAmount, status, date, shop_id').eq('shop_id', sId),
         supabase.from('shops').select('name').eq('id', sId).single()
       ]);
 

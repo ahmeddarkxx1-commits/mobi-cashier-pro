@@ -379,7 +379,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ settings, setSettings, tria
     if (!shopId) return;
     const { data: members } = await supabase.from('profiles').select('id, full_name, role, device_id, device_name, last_ip, last_seen, device_wait_until').eq('tenant_id', shopId);
     if (members) setTeamMembers(members);
-    const { data: invites } = await supabase.from('shop_invites').select('*').eq('shop_id', shopId).eq('accepted', false);
+    const { data: invites } = await supabase.from('shop_invites').select('id, email, role, shop_id, accepted, created_at').eq('shop_id', shopId).eq('accepted', false);
     if (invites) setPendingInvites(invites);
     const { data: shop } = await supabase.from('shops').select('name, max_cashiers, settings').eq('id', shopId).single();
     if (shop) {

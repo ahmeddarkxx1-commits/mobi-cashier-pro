@@ -71,29 +71,40 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         
         // Supabase returns a session if email confirmation is disabled
         if (data.session) {
-          onLoginSuccess(data.session);
+          alert('تم التسجيل بنجاح! يرجى تسجيل الدخول للحصول على جلسة عمل آمنة.');
+          setIsSignUp(false);
         } else {
           // If email confirmation is required but we just want to login right away if disabled
           alert('تم التسجيل! إذا تم إيقاف تأكيد البريد، يمكنك تسجيل الدخول الآن.');
           setIsSignUp(false);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         });
 
-        if (error) throw error;
-        if (data.session) {
-          // تحديث الـ IP ووقت الدخول فقط دون المساس ببصمة الجهاز الموثقة
-          await supabase.auth.updateUser({
-            data: { 
-              last_ip: userIp,
-              last_login: new Date().toISOString()
-            }
-          });
-          onLoginSuccess(data.session);
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'فشل تسجيل الدخول');
         }
+
+        const resData = await res.json();
+
+        // Authenticate browser Supabase client in memory
+        await supabase.auth.setSession({
+          access_token: resData.access_token,
+          refresh_token: ''
+        });
+
+        // Update last IP and last seen in profiles table instead of user_metadata
+        await supabase.from('profiles')
+          .update({ last_ip: userIp, last_seen: new Date().toISOString() })
+          .eq('id', resData.user.id);
+
+        const mockSession = { user: resData.user, access_token: resData.access_token } as any;
+        onLoginSuccess(mockSession);
       }
     } catch (err: any) {
       setError(err.message || 'فشل الاتصال. تأكد من البيانات.');

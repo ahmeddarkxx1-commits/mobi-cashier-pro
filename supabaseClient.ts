@@ -16,10 +16,14 @@ const credentials = getCredentials();
 
 export const supabase = createClient(credentials.url, credentials.key, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storage: {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {}
+    }
   }
 });
 
