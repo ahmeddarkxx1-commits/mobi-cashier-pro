@@ -472,8 +472,11 @@ const App: React.FC = () => {
 
         if (isDeviceAuthorized) {
           setIsWaitingForDevice(false);
-          const userEmail = session?.user?.email;
-          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail?.startsWith('admin') || userEmail?.startsWith('superadmin');
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          const userEmail = user?.email?.toLowerCase() || '';
+          
+          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail.startsWith('admin') || userEmail.startsWith('superadmin');
           setUserRole((isHardcodedAdmin ? 'SUPER_ADMIN' : profile.role) as UserRole);
           setTenantId(isHardcodedAdmin ? null : profile.tenant_id);
           setIsLocked(profile.is_locked || false);
@@ -481,8 +484,10 @@ const App: React.FC = () => {
         }
 
         if (!isDeviceAuthorized && devId) {
-          const userEmail = session?.user?.email;
-          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail?.startsWith('admin') || userEmail?.startsWith('superadmin');
+          const { data: { user } } = await supabase.auth.getUser();
+          const userEmail = user?.email?.toLowerCase() || '';
+          
+          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail.startsWith('admin') || userEmail.startsWith('superadmin');
           const effectiveRole = isHardcodedAdmin ? 'SUPER_ADMIN' : profile.role;
 
           if (effectiveRole === 'SUPER_ADMIN') {
