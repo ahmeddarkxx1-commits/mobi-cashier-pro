@@ -83,9 +83,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Fetch profile details securely using service client or anon client
-    // Since RLS is enabled, we can select user's own profile using their verified id
-    const { data: profile, error: profileError } = await supabase
+    // Fetch profile details securely using service client to bypass RLS, falling back to anon key
+    const serviceClient = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey, {
+      auth: { persistSession: false }
+    });
+    const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('id, full_name, role, tenant_id')
       .eq('id', user.id)
