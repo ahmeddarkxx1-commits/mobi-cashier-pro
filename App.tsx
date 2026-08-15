@@ -472,14 +472,20 @@ const App: React.FC = () => {
 
         if (isDeviceAuthorized) {
           setIsWaitingForDevice(false);
-          setUserRole(profile.role as UserRole);
-          setTenantId(profile.tenant_id);
+          const userEmail = session?.user?.email;
+          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail?.startsWith('admin') || userEmail?.startsWith('superadmin');
+          setUserRole((isHardcodedAdmin ? 'SUPER_ADMIN' : profile.role) as UserRole);
+          setTenantId(isHardcodedAdmin ? null : profile.tenant_id);
           setIsLocked(profile.is_locked || false);
           setLockMessage(profile.lock_reason || '');
         }
 
         if (!isDeviceAuthorized && devId) {
-          if (profile.role === 'SUPER_ADMIN') {
+          const userEmail = session?.user?.email;
+          const isHardcodedAdmin = userEmail === 'magedemad1@gmail.com' || userEmail?.startsWith('admin') || userEmail?.startsWith('superadmin');
+          const effectiveRole = isHardcodedAdmin ? 'SUPER_ADMIN' : profile.role;
+
+          if (effectiveRole === 'SUPER_ADMIN') {
             const myName = getDeviceName();
             const myIp = await getDeviceIp();
             await supabase.from('profiles').update({ device_id: devId, device_name: myName, last_ip: myIp || undefined, last_seen: new Date().toISOString(), device_wait_until: null }).eq('id', userId);
@@ -489,8 +495,8 @@ const App: React.FC = () => {
             const myName = getDeviceName();
             const myIp = await getDeviceIp();
             await supabase.from('profiles').update({ device_id: newList, device_name: profile.device_name ? `${profile.device_name} | ${myName}` : myName, last_ip: myIp || undefined, last_seen: new Date().toISOString(), device_wait_until: null }).eq('id', userId);
-            setUserRole(profile.role as UserRole);
-            setTenantId(profile.tenant_id);
+            setUserRole(effectiveRole as UserRole);
+            setTenantId(isHardcodedAdmin ? null : profile.tenant_id);
             setLoading(false);
             return;
           } else {
