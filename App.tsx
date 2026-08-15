@@ -465,10 +465,15 @@ const App: React.FC = () => {
         setIsLocked(true);
         setLockMessage(`خطأ في الاتصال بقاعدة البيانات: ${error.message} (${error.code}). يرجى التواصل مع الدعم.`);
       } else if (profile) {
-        const devId = localStorage.getItem('mobi_cashier_device_id');
+        let devId = localStorage.getItem('mobi_cashier_device_id');
+        if (!devId) {
+          devId = crypto.randomUUID();
+          localStorage.setItem('mobi_cashier_device_id', devId);
+        }
+        
         const userDevId = profile.device_id || "";
         const deviceList = userDevId ? userDevId.split(',') : [];
-        const isDeviceAuthorized = deviceList.includes(devId || '');
+        const isDeviceAuthorized = deviceList.includes(devId);
 
         if (isDeviceAuthorized) {
           setIsWaitingForDevice(false);
