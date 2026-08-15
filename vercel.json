@@ -1,7 +1,27 @@
 {
   "rewrites": [
     {
-      "source": "/((?!api/|assets/|favicon.ico|sw.js|manifest.json).*)",
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/sw.js",
+      "destination": "/sw.js"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/manifest.json"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/favicon.ico"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
