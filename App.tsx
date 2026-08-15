@@ -136,34 +136,53 @@ const App: React.FC = () => {
 
     const checkSession = async (isInitial = false) => {
       try {
+        // أولاً: حاول قراءة الجلسة من BFF API (Vercel)
         const res = await fetch('/api/auth/session');
-        if (!res.ok) throw new Error('Unauthorized');
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
 
-        if (isInitial) {
-          clearTimeout(safetyTimeout);
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (isInitial) clearTimeout(safetyTimeout);
+
+          await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: ''
+          });
+
+          const mockSession = { user: data.user, access_token: data.access_token } as any;
+          setSession(mockSession);
+          setAppState('app');
+          fetchUserProfile(data.user.id);
+          return;
         }
+      } catch (_) {
+        // BFF غير متاح، نكمل للـ fallback
+      }
 
-        // Authenticate the browser Supabase client in memory
-        await supabase.auth.setSession({
-          access_token: data.access_token,
-          refresh_token: ''
-        });
+      // Fallback: استخدم Supabase مباشرة (للوكالهوست بدون vercel dev)
+      try {
+        const { data: { session: supaSession } } = await supabase.auth.getSession();
+        if (isInitial) clearTimeout(safetyTimeout);
 
-        const mockSession = { user: data.user, access_token: data.access_token } as any;
-        setSession(mockSession);
-        setAppState('app');
-        fetchUserProfile(data.user.id);
+        if (supaSession) {
+          setSession(supaSession);
+          setAppState('app');
+          fetchUserProfile(supaSession.user.id);
+        } else {
+          setSession(null);
+          setAppState('landing');
+          setLoading(false);
+          setIsWaitingForDevice(false);
+        }
       } catch (err) {
-        if (isInitial) {
-          clearTimeout(safetyTimeout);
-        }
+        if (isInitial) clearTimeout(safetyTimeout);
         setSession(null);
         setAppState('landing');
         setLoading(false);
         setIsWaitingForDevice(false);
       }
     };
+
 
     checkSession(true);
 
