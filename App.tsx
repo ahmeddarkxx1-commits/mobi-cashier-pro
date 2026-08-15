@@ -425,7 +425,7 @@ const App: React.FC = () => {
       if (error) {
         setUserRole('OWNER');
         setIsLocked(true);
-        setLockMessage('حدث خطأ في تحميل بيانات الحساب من قاعدة البيانات. يرجى التحقق من اتصالك بالإنترنت أو التواصل مع الدعم الفني.');
+        setLockMessage(`خطأ في الاتصال بقاعدة البيانات: ${error.message} (${error.code}). يرجى التواصل مع الدعم.`);
       } else if (profile) {
         const devId = localStorage.getItem('mobi_cashier_device_id');
         const userDevId = profile.device_id || "";
