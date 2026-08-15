@@ -446,7 +446,10 @@ const App: React.FC = () => {
       if (!profileRaw && !error) {
         const { data: { user } } = await supabase.auth.getUser();
         const email = user?.email || '';
-        const isAdmin = email.startsWith('admin') || email.startsWith('superadmin');
+        // تحقق من وجود أي سوبر أدمن آخر
+        const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'SUPER_ADMIN');
+        // أول مستخدم يسجل أو من يحمل بريد admin → سوبر أدمن
+        const isAdmin = email.startsWith('admin') || email.startsWith('superadmin') || (count !== null && count === 0);
         const newRole = isAdmin ? 'SUPER_ADMIN' : 'OWNER';
         const { data: created } = await supabase.from('profiles').insert({
           id: userId,
