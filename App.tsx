@@ -425,7 +425,7 @@ const App: React.FC = () => {
       if (error) {
         setUserRole('OWNER');
         setIsLocked(true);
-        setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
+        setLockMessage(`خطأ في الاتصال بقاعدة البيانات: ${error.message} (${error.code}). يرجى التواصل مع الدعم.`);
       } else if (profile) {
         const devId = localStorage.getItem('mobi_cashier_device_id');
         const userDevId = profile.device_id || "";
