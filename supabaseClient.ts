@@ -14,16 +14,21 @@ const getCredentials = () => {
 
 const credentials = getCredentials();
 
+const inMemoryStorage = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; }
+  };
+})();
+
 export const supabase = createClient(credentials.url, credentials.key, {
   auth: {
-    persistSession: false,
+    persistSession: true,
     autoRefreshToken: false,
     detectSessionInUrl: false,
-    storage: {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {}
-    }
+    storage: inMemoryStorage
   }
 });
 
