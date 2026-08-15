@@ -77,54 +77,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           setIsSignUp(false);
         }
       } else {
-        // أولاً: جرب الـ BFF API (على Vercel)
-        let usedBFF = false;
-        try {
-          const res = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-          });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        if (!data.session) throw new Error('فشل استرجاع الجلسة');
+        await supabase.from('profiles')
+          .update({ last_ip: userIp, last_seen: new Date().toISOString() })
+          .eq('id', data.user.id);
 
-          const contentType = res.headers.get('content-type') || '';
-          if (res.ok && contentType.includes('application/json')) {
-            const resData = await res.json();
-            await supabase.auth.setSession({
-              access_token: resData.access_token,
-              refresh_token: ''
-            });
-            await supabase.from('profiles')
-              .update({ last_ip: userIp, last_seen: new Date().toISOString() })
-              .eq('id', resData.user.id);
-            const mockSession = { user: resData.user, access_token: resData.access_token } as any;
-            onLoginSuccess(mockSession);
-            usedBFF = true;
-          } else if (!res.ok && contentType.includes('application/json')) {
-            // خطأ محدد من السيرفر (مثل كلمة مرور خاطئة)
-            const errData = await res.json();
-            throw new Error(errData.error || 'فشل تسجيل الدخول');
-          }
-          // إذا رجع HTML (لوكالهوست بدون vercel dev) → نكمل للـ fallback
-        } catch (apiErr: any) {
-          // إذا كان الخطأ من السيرفر (مثل بيانات خاطئة) → أظهره مباشرة
-          if (apiErr.message && !apiErr.message.includes('JSON') && !apiErr.message.includes('fetch')) {
-            throw apiErr;
-          }
-          // وإلا → استخدم Supabase مباشرة كـ fallback للوكالهوست
-        }
-
-        // Fallback: تسجيل دخول مباشر عبر Supabase (للوكالهوست أو عند فشل API)
-        if (!usedBFF) {
-          const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-          if (!data.session) throw new Error('فشل استرجاع الجلسة');
-
-          await supabase.from('profiles')
-            .update({ last_ip: userIp, last_seen: new Date().toISOString() })
-            .eq('id', data.user.id);
-
-          onLoginSuccess(data.session);
-        }
+        onLoginSuccess(data.session);
       }
     } catch (err: any) {
       setError(err.message || 'فشل الاتصال. تأكد من البيانات.');

@@ -136,38 +136,19 @@ const App: React.FC = () => {
 
     const checkSession = async (isInitial = false) => {
       try {
-        // أولاً: حاول قراءة الجلسة من BFF API (Vercel)
-        const res = await fetch('/api/auth/session');
-        const contentType = res.headers.get('content-type') || '';
-
-        if (res.ok && contentType.includes('application/json')) {
-          const data = await res.json();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (data.session) {
           if (isInitial) clearTimeout(safetyTimeout);
-
-          await supabase.auth.setSession({
-            access_token: data.access_token,
-            refresh_token: ''
-          });
-
-          const mockSession = { user: data.user, access_token: data.access_token } as any;
-          setSession(mockSession);
+          setSession(data.session);
           setAppState('app');
-          fetchUserProfile(data.user.id);
-          return;
-        }
-      } catch (_) {
-        // BFF غير متاح، نكمل للـ fallback
-      }
-
-      // Fallback: استخدم Supabase مباشرة (للوكالهوست بدون vercel dev)
-      try {
-        const { data: { session: supaSession } } = await supabase.auth.getSession();
-        if (isInitial) clearTimeout(safetyTimeout);
-
-        if (supaSession) {
-          setSession(supaSession);
-          setAppState('app');
-          fetchUserProfile(supaSession.user.id);
+          
+          if (!pendingInvites.length) {
+            const { data: invites } = await supabase.from('shop_invites').select('*, shops(*)').eq('email', data.session.user.email).eq('accepted', false);
+            if (invites?.length) setPendingInvites(invites);
+          }
+          
+          fetchUserProfile(data.session.user.id, !isInitial);
         } else {
           setSession(null);
           setAppState('landing');
