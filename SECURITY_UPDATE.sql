@@ -4,6 +4,16 @@
 -- شغّل هذا الملف بالكامل في لوحة تحكم Supabase SQL Editor
 -- =======================================================
 
+-- 0. إضافة أعمدة التحكم والجهاز المفقودة لجدول profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_id TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT false;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS lock_reason TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS max_devices INTEGER DEFAULT 1;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_ip TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS device_wait_until TIMESTAMPTZ;
+
 -- 1. تفعيل سياسة Row Level Security (RLS) لجميع الجداول
 ALTER TABLE IF EXISTS public.shops ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.profiles ENABLE ROW LEVEL SECURITY;
