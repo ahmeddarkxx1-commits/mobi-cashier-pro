@@ -69,22 +69,31 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         });
         if (error) throw error;
         
+        // Supabase returns a session if email confirmation is disabled
         if (data.session) {
-          alert('تم التسجيل بنجاح! يرجى تسجيل الدخول للحصول على جلسة عمل آمنة.');
-          setIsSignUp(false);
+          onLoginSuccess(data.session);
         } else {
+          // If email confirmation is required but we just want to login right away if disabled
           alert('تم التسجيل! إذا تم إيقاف تأكيد البريد، يمكنك تسجيل الدخول الآن.');
           setIsSignUp(false);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        if (!data.session) throw new Error('فشل استرجاع الجلسة');
-        await supabase.from('profiles')
-          .update({ last_ip: userIp, last_seen: new Date().toISOString() })
-          .eq('id', data.user.id);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-        onLoginSuccess(data.session);
+        if (error) throw error;
+        if (data.session) {
+          // تحديث الـ IP ووقت الدخول فقط دون المساس ببصمة الجهاز الموثقة
+          await supabase.auth.updateUser({
+            data: { 
+              last_ip: userIp,
+              last_login: new Date().toISOString()
+            }
+          });
+          onLoginSuccess(data.session);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'فشل الاتصال. تأكد من البيانات.');
@@ -92,7 +101,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 font-['Cairo'] flex items-center justify-center p-4 relative overflow-hidden" dir="rtl">

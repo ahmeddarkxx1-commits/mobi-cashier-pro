@@ -72,10 +72,7 @@ const BalanceRecharge: React.FC<BalanceRechargeProps> = ({ addTransaction, setti
     const sell = parseFloat(sellingPrice);
     const cost = parseFloat(costPrice) || 0;
     
-    if (isNaN(sell) || sell <= 0 || cost < 0) {
-      alert('الأسعار يجب أن تكون موجبة وقيم صحيحة!');
-      return;
-    }
+    if (isNaN(sell) || sell <= 0) return;
 
     const desc = activeCat === 'credit' 
       ? `رصيد صافي ${netAmount} لشركة ${operator?.name}`

@@ -134,44 +134,38 @@ const App: React.FC = () => {
     // Safety net: never show black screen for more than 5 seconds
     const safetyTimeout = setTimeout(() => setLoading(false), 5000);
 
-    const checkSession = async (isInitial = false) => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (data.session) {
-          if (isInitial) clearTimeout(safetyTimeout);
-          setSession(data.session);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(safetyTimeout);
+      setSession(session);
+      if (session) {
+        setAppState('app');
+        fetchUserProfile(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    }).catch(err => {
+      clearTimeout(safetyTimeout);
+      console.error('Supabase session loading failed:', err);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') return;
+      setSession(session);
+      if (session) {
+        if (appState === 'login' || appState === 'landing') {
           setAppState('app');
-          
-          if (!pendingInvites.length) {
-            const { data: invites } = await supabase.from('shop_invites').select('*, shops(*)').eq('email', data.session.user.email).eq('accepted', false);
-            if (invites?.length) setPendingInvites(invites);
-          }
-          
-          fetchUserProfile(data.session.user.id, !isInitial);
-        } else {
-          setSession(null);
-          setAppState('landing');
-          setLoading(false);
-          setIsWaitingForDevice(false);
         }
-      } catch (err) {
-        if (isInitial) clearTimeout(safetyTimeout);
-        setSession(null);
+        fetchUserProfile(session.user.id);
+      } else {
         setAppState('landing');
         setLoading(false);
         setIsWaitingForDevice(false);
       }
-    };
-
-
-    checkSession(true);
-
-    // Silent background token refresh every 10 minutes
-    const refreshInterval = setInterval(() => checkSession(false), 10 * 60 * 1000);
+    });
 
     return () => {
-      clearInterval(refreshInterval);
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -212,7 +206,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchGlobalData = async () => {
       try {
-        const { data: config } = await supabase.from('app_config').select('id, maintenance_mode, maintenance_message, global_message').limit(1).maybeSingle();
+        const { data: config } = await supabase.from('app_config').select('*').limit(1).maybeSingle();
         if (config) {
           setIsMaintenance(config.maintenance_mode);
           setMaintenanceMessage(config.maintenance_message);
@@ -221,7 +215,7 @@ const App: React.FC = () => {
             globalMessage: config.global_message || ''
           }));
         }
-        const { data: notify } = await supabase.from('app_notifications').select('id, title, message, type, is_active, created_at').eq('is_active', true).order('created_at', { ascending: false });
+        const { data: notify } = await supabase.from('app_notifications').select('*').eq('is_active', true).order('created_at', { ascending: false });
         if (notify) setGlobalNotifications(notify);
       } catch (err) {
         console.warn('Could not fetch global app config (offline mode):', err);
@@ -416,45 +410,21 @@ const App: React.FC = () => {
     }
     if (!isSilent) setLoading(true);
     try {
-      const { data: profileRaw, error } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, tenant_id, device_id, device_name, is_locked, lock_reason, max_devices, last_ip, last_seen, device_wait_until')
+        .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
-      // إذا لم يوجد ملف شخصي → أنشئه تلقائياً
-      let profile = profileRaw;
-      if (!profileRaw && !error) {
-        const { data: { user } } = await supabase.auth.getUser();
-        const email = user?.email || '';
-        // تحقق من وجود أي سوبر أدمن آخر
-        const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'SUPER_ADMIN');
-        // أول مستخدم يسجل فقط يكون السوبر أدمن
-        const isAdmin = (count !== null && count === 0);
-        const newRole = isAdmin ? 'SUPER_ADMIN' : 'OWNER';
-        const { data: created } = await supabase.from('profiles').insert({
-          id: userId,
-          full_name: user?.user_metadata?.full_name || email.split('@')[0],
-          role: newRole,
-          tenant_id: null
-        }).select().maybeSingle();
-        profile = created;
-      }
-
-      if (error && !profile) {
+      if (error) {
         setUserRole('OWNER');
         setIsLocked(true);
-        setLockMessage(`خطأ في الاتصال بقاعدة البيانات: ${error.message} (${error.code}). يرجى التواصل مع الدعم.`);
+        setLockMessage('حسابك قيد المراجعة. يرجى التواصل مع الإدارة عبر واتساب لتفعيل اشتراكك.');
       } else if (profile) {
-        let devId = localStorage.getItem('mobi_cashier_device_id');
-        if (!devId) {
-          devId = crypto.randomUUID();
-          localStorage.setItem('mobi_cashier_device_id', devId);
-        }
-        
+        const devId = localStorage.getItem('mobi_cashier_device_id');
         const userDevId = profile.device_id || "";
         const deviceList = userDevId ? userDevId.split(',') : [];
-        const isDeviceAuthorized = deviceList.includes(devId);
+        const isDeviceAuthorized = deviceList.includes(devId || '');
 
         if (isDeviceAuthorized) {
           setIsWaitingForDevice(false);
@@ -548,13 +518,8 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    try {
-      if (session?.user?.id) {
-        await supabase.from('profiles').update({ last_seen: null }).eq('id', session.user.id);
-      }
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Logout API failed:', e);
+    if (session?.user?.id) {
+      await supabase.from('profiles').update({ last_seen: null }).eq('id', session.user.id);
     }
     await supabase.auth.signOut();
     setSession(null);
