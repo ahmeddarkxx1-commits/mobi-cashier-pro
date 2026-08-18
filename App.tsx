@@ -19,7 +19,7 @@ const App: React.FC = () => {
   const [lockMessage, setLockMessage] = useState('');
   const [shopPlan, setShopPlan] = useState<string>('BASIC');
   
-  const [appState, setAppState] = useState<'landing' | 'login' | 'register' | 'app'>('landing');
+  const [appState, setAppState] = useState<'landing' | 'login' | 'register' | 'recovery' | 'app'>('landing');
   const [selectedPlan, setSelectedPlan] = useState<'BASIC' | 'PRO'>('BASIC');
   const [selectedDuration, setSelectedDuration] = useState<'1' | '3' | '12'>('1');
 
@@ -151,9 +151,15 @@ const App: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (_event === 'TOKEN_REFRESHED' || _event === 'USER_UPDATED') return;
+      
+      if (_event === 'PASSWORD_RECOVERY') {
+        setAppState('recovery');
+        return;
+      }
+      
       setSession(session);
       if (session) {
-        if (appState === 'login' || appState === 'landing') {
+        if (appState === 'login' || appState === 'landing' || appState === 'register') {
           setAppState('app');
         }
         fetchUserProfile(session.user.id);
@@ -545,8 +551,49 @@ const App: React.FC = () => {
   if (!session || appState === 'login') {
     return (
       <div className="relative min-h-screen bg-[#020617]" dir="rtl">
-        <button onClick={() => setAppState('landing')} className="absolute top-8 left-8 z-50 text-slate-400 hover:text-white font-['Cairo'] flex items-center gap-2 font-bold px-4 py-2 bg-slate-900 rounded-xl border border-slate-800">رجوع للرئيسية</button>
-        <LoginPage onLoginSuccess={(sess) => { setSession(sess); setAppState('app'); }} />
+        <button onClick={() => setAppState('landing')} className="absolute top-8 left-8 z-50 text-slate-400 hover:text-white font-['Cairo'] flex items-center gap-2 font-bold px-4 py-2 bg-slate-900 rounded-xl border border-slate-800">الرجوع للرئيسية</button>
+        <LoginPage 
+          onLoginSuccess={(sess) => { setSession(sess); setAppState('app'); }} 
+          onNavigateToRegister={() => setAppState('register')}
+        />
+      </div>
+    );
+  }
+
+  if (appState === 'recovery') {
+    return (
+      <div className="relative min-h-screen bg-slate-950 flex items-center justify-center font-['Cairo']" dir="rtl">
+        <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] w-full max-w-md shadow-2xl">
+          <h2 className="text-2xl font-black text-white text-center mb-6">تغيير كلمة المرور</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const newPassword = (e.target as any).newPassword.value;
+            if (newPassword.length < 6) return alert('كلمة المرور قصيرة');
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) {
+              alert('حدث خطأ: ' + error.message);
+            } else {
+              alert('تم تغيير كلمة المرور بنجاح!');
+              setAppState('app');
+            }
+          }} className="space-y-4">
+            <div>
+              <label className="text-slate-400 text-xs font-bold mb-2 block">كلمة المرور الجديدة</label>
+              <input 
+                name="newPassword" 
+                type="password" 
+                placeholder="••••••••" 
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white outline-none focus:border-emerald-500"
+                required 
+                minLength={6} 
+                dir="ltr"
+              />
+            </div>
+            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition-colors">
+              حفظ ودخول
+            </button>
+          </form>
+        </div>
       </div>
     );
   }

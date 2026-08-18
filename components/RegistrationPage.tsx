@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Store, User, Mail, Lock, Phone, Loader2, CheckCircle, ArrowRight } from 'lucide-react';
+import { Store, User, Mail, Lock, Phone, Loader2, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 interface RegistrationPageProps {
   plan?: string;
@@ -25,7 +25,6 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
     e.preventDefault();
     setError(null);
 
-    // تحقق بسيط
     if (!shopName.trim() || !fullName.trim() || !email.trim() || !password.trim()) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return;
@@ -37,7 +36,6 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
 
     setLoading(true);
     try {
-      // إنشاء الحساب مع بيانات المحل في الـ metadata
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -61,13 +59,11 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
       }
 
       if (data.session) {
-        // تسجيل ناجح وتم الدخول تلقائياً
         setDone(true);
         setTimeout(() => onSuccess(data.session), 1500);
       } else {
-        // قد يحتاج تأكيد البريد
         setDone(true);
-        setError('تم التسجيل! إذا طُلب منك تأكيد البريد، افحص صندوق الوارد ثم سجّل دخولك.');
+        setError('تم التسجيل! يرجى تسجيل الدخول الآن.');
       }
 
     } catch (err: any) {
@@ -79,28 +75,29 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
 
   if (done && !error) {
     return (
-      <div className="min-h-screen bg-[#020617] flex items-center justify-center font-['Cairo']" dir="rtl">
-        <div className="text-center space-y-4">
-          <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle size={48} className="text-green-400" />
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center font-['Cairo'] relative overflow-hidden" dir="rtl">
+        <div className="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cg fill=\\'none\\' fill-rule=\\'evenodd\\'%3E%3Cg fill=\\'%23ffffff\\' fill-opacity=\\'1\\'%3E%3Cpath d=\\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
+        </div>
+        <div className="text-center space-y-4 relative z-10 animate-in fade-in zoom-in duration-500">
+          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/30">
+            <CheckCircle size={48} className="text-emerald-400" />
           </div>
           <h2 className="text-2xl font-black text-white">تم إنشاء الحساب بنجاح!</h2>
-          <p className="text-slate-400">جاري تحويلك...</p>
+          <p className="text-slate-400 font-bold">جاري تحويلك إلى لوحة التحكم...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white font-['Cairo'] flex items-center justify-center p-4" dir="rtl">
-      {/* خلفية */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[400px] h-[400px] bg-purple-600/10 rounded-full blur-[120px]" />
+    <div className="min-h-screen bg-slate-950 text-slate-50 font-['Cairo'] flex items-center justify-center p-4 relative overflow-hidden" dir="rtl">
+      {/* Premium Minimalist Background (Matching LoginPage) */}
+      <div className="fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: "url('data:image/svg+xml,%3Csvg width=\\'60\\' height=\\'60\\' viewBox=\\'0 0 60 60\\' xmlns=\\'http://www.w3.org/2000/svg\\'%3E%3Cg fill=\\'none\\' fill-rule=\\'evenodd\\'%3E%3Cg fill=\\'%23ffffff\\' fill-opacity=\\'1\\'%3E%3Cpath d=\\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')" }}></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* رجوع */}
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors text-sm font-bold"
@@ -109,124 +106,121 @@ const RegistrationPage: React.FC<RegistrationPageProps> = ({ onBack, onSuccess }
           رجوع لتسجيل الدخول
         </button>
 
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 p-8 rounded-3xl shadow-2xl">
-          {/* العنوان */}
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
-              <Store size={32} />
+        <div className="bg-slate-900/50 backdrop-blur-2xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-black/50">
+          <div className="text-center mb-10">
+            <div className="inline-flex p-4 bg-emerald-600 rounded-3xl shadow-xl shadow-emerald-600/20 mb-6">
+              <Store size={40} className="text-white" />
             </div>
-            <h1 className="text-2xl font-black">إنشاء حساب جديد</h1>
-            <p className="text-slate-400 text-sm mt-1">ابدأ فترتك التجريبية المجانية (3 أيام)</p>
+            <h1 className="text-3xl font-black tracking-tight mb-2">إنشاء حساب جديد</h1>
+            <p className="text-slate-400 font-bold text-sm">ابدأ رحلتك في إدارة محلك بذكاء</p>
           </div>
 
-          <form onSubmit={handleRegister} className="space-y-4">
-            {/* اسم المحل */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 mb-2">اسم المحل *</label>
-              <div className="relative">
-                <Store size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <form onSubmit={handleRegister} className="space-y-6">
+            
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">اسم المحل *</label>
+              <div className="relative group">
+                <Store className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                 <input
                   type="text"
                   value={shopName}
                   onChange={e => setShopName(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="مثال: محل موبايلات الأمين"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pr-11 pl-4 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   required
                 />
               </div>
             </div>
 
-            {/* الاسم الكامل */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 mb-2">اسم صاحب المحل *</label>
-              <div className="relative">
-                <User size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">اسم صاحب المحل *</label>
+              <div className="relative group">
+                <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                 <input
                   type="text"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="الاسم الكامل"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pr-11 pl-4 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   required
                 />
               </div>
             </div>
 
-            {/* رقم الهاتف */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 mb-2">رقم الهاتف</label>
-              <div className="relative">
-                <Phone size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">رقم الهاتف</label>
+              <div className="relative group">
+                <Phone className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="01xxxxxxxxx"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pr-11 pl-4 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   dir="ltr"
                 />
               </div>
             </div>
 
-            {/* البريد الإلكتروني */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 mb-2">البريد الإلكتروني *</label>
-              <div className="relative">
-                <Mail size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">البريد الإلكتروني *</label>
+              <div className="relative group">
+                <Mail className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="example@gmail.com"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pr-11 pl-4 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                   dir="ltr"
                   required
                 />
               </div>
             </div>
 
-            {/* كلمة المرور */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 mb-2">كلمة المرور *</label>
-              <div className="relative">
-                <Lock size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">كلمة المرور *</label>
+              <div className="relative group">
+                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
                 <input
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="6 أحرف على الأقل"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pr-11 pl-4 text-sm font-bold placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                  dir="ltr"
                   required
                   minLength={6}
                 />
               </div>
             </div>
 
-            {/* رسالة الخطأ */}
             {error && (
-              <div className="bg-red-900/30 border border-red-700/50 rounded-xl p-3 text-sm text-red-400 font-bold text-center">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm text-red-400 font-bold text-center">
                 {error}
               </div>
             )}
 
-            {/* زر التسجيل */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-900 text-white py-4 rounded-2xl font-black text-base transition-all active:scale-95 shadow-lg shadow-blue-500/20 flex items-center justify-center gap-3 mt-2"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-600/50 p-5 rounded-2xl font-black text-lg shadow-xl shadow-emerald-600/20 transition-all flex items-center justify-center gap-3 mt-4"
             >
               {loading ? (
-                <><Loader2 size={20} className="animate-spin" /> جاري إنشاء الحساب...</>
+                <Loader2 className="animate-spin" size={24} />
               ) : (
-                'إنشاء الحساب مجاناً 🎁'
+                'إنشاء الحساب مجاناً'
               )}
             </button>
-
-            {/* ملاحظة */}
-            <p className="text-center text-xs text-slate-500 font-bold">
-              بعد التسجيل ستظهر رسالة "قيد المراجعة" حتى يقوم الأدمن بتفعيل حسابك
+            
+            <p className="text-center text-xs text-slate-500 font-bold mt-4">
+              بالتسجيل، أنت توافق على شروط الخدمة وسياسة الخصوصية
             </p>
           </form>
+        </div>
+        
+        <div className="text-center mt-8 space-y-1">
+          <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest">Powered by Al3alme Systems</p>
         </div>
       </div>
     </div>

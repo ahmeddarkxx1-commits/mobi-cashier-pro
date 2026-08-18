@@ -26,7 +26,8 @@ import {
   Layers,
   ChevronLeft,
   Quote,
-  X
+  X,
+  Menu
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -39,6 +40,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
   const [scrolled, setScrolled] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [isTracking, setIsTracking] = useState(false);
   const [trackingValue, setTrackingValue] = useState('');
@@ -111,7 +113,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
 
       {/* Modern Glass Navbar */}
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? 'py-3 bg-slate-950/80 backdrop-blur-2xl border-b border-white/10' : 'py-6 bg-transparent'}`}>
-        <div className="container mx-auto px-6 flex justify-between items-center">
+        <div className="container mx-auto px-4 md:px-6 flex justify-between items-center">
           <div className="flex items-center gap-2 md:gap-3">
             <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl md:rounded-2xl shadow-lg shadow-emerald-600/20 rotate-3 hover:rotate-0 transition-transform cursor-pointer">
               <Smartphone size={20} className="text-white md:w-6 md:h-6" />
@@ -122,31 +124,68 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSelectPlan, onLogin }) => {
             </div>
           </div>
           
-          <div className="hidden md:flex items-center gap-8 ml-auto mr-12">
+          <div className="hidden lg:flex items-center gap-8 ml-auto mr-12">
             <a href="#features" className="text-sm font-bold text-slate-400 hover:text-emerald-400 transition-colors">المميزات</a>
             <a href="#how-it-works" className="text-sm font-bold text-slate-400 hover:text-emerald-400 transition-colors">كيف يعمل؟</a>
             <a href="#pricing" className="text-sm font-bold text-slate-400 hover:text-emerald-400 transition-colors">الأسعار</a>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4 animate-in fade-in duration-300">
+          <div className="hidden lg:flex items-center gap-4 animate-in fade-in duration-300">
             <button 
               onClick={() => { setIsTracking(true); setTrackingValue(''); setTrackingResults([]); setQueryError(''); }}
-              className="text-xs md:text-sm font-black text-emerald-400 hover:text-emerald-300 transition-colors px-3 md:px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
+              className="text-sm font-black text-emerald-400 hover:text-emerald-300 transition-colors px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
             >
               🔍 تتبع جهازك
             </button>
-            <button onClick={onLogin} className="text-xs md:text-sm font-black text-slate-200 hover:text-white transition-colors px-3 md:px-5 py-2 md:py-2.5 rounded-lg md:rounded-xl hover:bg-white/5">
+            <button onClick={onLogin} className="text-sm font-black text-slate-200 hover:text-white transition-colors px-5 py-2.5 rounded-xl hover:bg-white/5">
               دخول
             </button>
             <button 
               onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-              className="relative group bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-black px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-2xl transition-all shadow-lg shadow-emerald-600/30 overflow-hidden active:scale-95"
+              className="relative group bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black px-8 py-3.5 rounded-2xl transition-all shadow-lg shadow-emerald-600/30 overflow-hidden active:scale-95"
             >
               <span className="relative z-10">ابدأ الآن</span>
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
             </button>
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 text-slate-200 hover:text-white bg-white/5 rounded-xl transition-colors"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden absolute top-full left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 p-6 flex flex-col gap-6 shadow-2xl animate-in slide-in-from-top-2 duration-300">
+            <div className="flex flex-col gap-4 text-center border-b border-white/10 pb-6">
+              <a onClick={() => setIsMobileMenuOpen(false)} href="#features" className="text-base font-bold text-slate-300 hover:text-emerald-400 transition-colors">المميزات</a>
+              <a onClick={() => setIsMobileMenuOpen(false)} href="#how-it-works" className="text-base font-bold text-slate-300 hover:text-emerald-400 transition-colors">كيف يعمل؟</a>
+              <a onClick={() => setIsMobileMenuOpen(false)} href="#pricing" className="text-base font-bold text-slate-300 hover:text-emerald-400 transition-colors">الأسعار</a>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={() => { setIsMobileMenuOpen(false); setIsTracking(true); setTrackingValue(''); setTrackingResults([]); setQueryError(''); }}
+                className="w-full text-base font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-3 rounded-xl flex justify-center items-center gap-2"
+              >
+                <span>🔍</span> تتبع جهازك
+              </button>
+              <button onClick={() => { setIsMobileMenuOpen(false); onLogin(); }} className="w-full text-base font-black text-slate-200 hover:text-white bg-white/5 py-3 rounded-xl text-center border border-white/10">
+                دخول
+              </button>
+              <button 
+                onClick={() => { setIsMobileMenuOpen(false); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-base font-black py-4 rounded-xl shadow-lg shadow-emerald-600/30 text-center"
+              >
+                ابدأ الآن
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section - Premium Reveal */}

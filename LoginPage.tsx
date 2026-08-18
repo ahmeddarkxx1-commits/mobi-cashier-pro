@@ -1,20 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
-import { LogIn, Store, ShieldCheck, Mail, Lock, Loader2, AlertCircle, UserPlus, User } from 'lucide-react';
+import { LogIn, Store, ShieldCheck, Mail, Lock, Loader2, AlertCircle, KeyRound, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface LoginPageProps {
   onLoginSuccess: (session: any) => void;
+  onNavigateToRegister: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onNavigateToRegister }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [fullName, setFullName] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
 
   const [showDbConfig, setShowDbConfig] = useState(false);
   const [dbUrl, setDbUrl] = useState(localStorage.getItem('CUSTOM_SUPABASE_URL') || '');
@@ -38,65 +40,71 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     window.location.reload();
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const fetchUserIp = async (): Promise<string> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout max
+      const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      return data.ip || 'Unknown';
+    } catch {
+      return 'Unknown';
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMsg(null);
 
     try {
-      const devId = localStorage.getItem('mobi_cashier_device_id') || ('dev_' + Math.random().toString(36).substring(2, 15));
-      if (!localStorage.getItem('mobi_cashier_device_id')) localStorage.setItem('mobi_cashier_device_id', devId);
-
-      // جلب عنوان الـ IP للتوثيق في لوحة الأدمن
-      let userIp = 'Unknown';
-      try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipRes.json();
-        userIp = ipData.ip;
-      } catch (e) { console.error('IP fetch failed'); }
-
-      if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              device_id: devId,
-              last_ip: userIp
-            }
-          }
-        });
-        if (error) throw error;
-        
-        // Supabase returns a session if email confirmation is disabled
-        if (data.session) {
-          onLoginSuccess(data.session);
-        } else {
-          // If email confirmation is required but we just want to login right away if disabled
-          alert('تم التسجيل! إذا تم إيقاف تأكيد البريد، يمكنك تسجيل الدخول الآن.');
-          setIsSignUp(false);
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-        if (data.session) {
-          // تحديث الـ IP ووقت الدخول فقط دون المساس ببصمة الجهاز الموثقة
-          await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      
+      if (data.session) {
+        // Fetch IP asynchronously in the background so it doesn't block login
+        fetchUserIp().then(userIp => {
+          supabase.auth.updateUser({
             data: { 
               last_ip: userIp,
               last_login: new Date().toISOString()
             }
-          });
-          onLoginSuccess(data.session);
-        }
+          }).catch(console.error); // Silently fail if IP update fails
+        });
+        
+        onLoginSuccess(data.session);
       }
     } catch (err: any) {
-      setError(err.message || 'فشل الاتصال. تأكد من البيانات.');
+      setError(err.message || 'البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+
+    if (!email) {
+      setError('يرجى إدخال البريد الإلكتروني أولاً.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      
+      setSuccessMsg('تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني. يرجى مراجعة صندوق الوارد الخاص بك.');
+      // Keep them on the form so they can read the message
+    } catch (err: any) {
+      setError(err.message || 'حدث خطأ أثناء إرسال رابط الاستعادة.');
     } finally {
       setLoading(false);
     }
@@ -111,43 +119,46 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
       <div className="w-full max-w-md relative z-10">
         <div className="bg-slate-900/50 backdrop-blur-2xl border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl shadow-black/50">
+          
+          {isForgotPassword && (
+            <button
+              onClick={() => { setIsForgotPassword(false); setError(null); setSuccessMsg(null); }}
+              className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors text-sm font-bold"
+            >
+              <ArrowRight size={18} />
+              رجوع لتسجيل الدخول
+            </button>
+          )}
+
           {/* Header */}
           <div className="text-center mb-10">
             <div className="inline-flex p-4 bg-emerald-600 rounded-3xl shadow-xl shadow-emerald-600/20 mb-6">
-              <ShieldCheck size={40} className="text-white" />
+              {isForgotPassword ? <KeyRound size={40} className="text-white" /> : <ShieldCheck size={40} className="text-white" />}
             </div>
             <h1 className="text-3xl font-black tracking-tight mb-2">
-              {isSignUp ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+              {isForgotPassword ? 'استعادة كلمة المرور' : 'تسجيل الدخول'}
             </h1>
-            <p className="text-slate-400 font-bold text-sm">نظام إدارة محلات الموبايلات الذكي</p>
+            <p className="text-slate-400 font-bold text-sm">
+              {isForgotPassword ? 'أدخل بريدك الإلكتروني وسنرسل لك رابط الاستعادة' : 'نظام إدارة محلات الموبايلات الذكي'}
+            </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-sm font-bold animate-shake">
-              <AlertCircle size={18} />
-              {error}
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 text-red-400 text-sm font-bold animate-shake">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleAuth} className="space-y-6">
-            
-            {isSignUp && (
-              <div className="space-y-2">
-                <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">الاسم الكامل</label>
-                <div className="relative group">
-                  <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
-                    placeholder="الاسم الثلاثي"
-                    required={isSignUp}
-                  />
-                </div>
-              </div>
-            )}
+          {successMsg && (
+            <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-3 text-emerald-400 text-sm font-bold">
+              <ShieldCheck size={18} className="shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
 
+          <form onSubmit={isForgotPassword ? handleResetPassword : handleLogin} className="space-y-6">
+            
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">البريد الإلكتروني</label>
               <div className="relative group">
@@ -158,25 +169,45 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
                   placeholder="example@shop.com"
+                  dir="ltr"
                   required
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-500 mr-2 uppercase tracking-widest">كلمة المرور</label>
-              <div className="relative group">
-                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
-                  placeholder="••••••••"
-                  required
-                />
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center mr-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-widest">كلمة المرور</label>
+                  <button 
+                    type="button" 
+                    onClick={() => { setIsForgotPassword(true); setError(null); setSuccessMsg(null); }}
+                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    نسيت كلمة السر؟
+                  </button>
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={20} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-950/50 border border-slate-800 p-4 pr-12 pl-12 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+                    placeholder="••••••••"
+                    dir="ltr"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
@@ -187,57 +218,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  {isSignUp ? <UserPlus size={24} className="group-hover:scale-110 transition-transform" /> : <LogIn size={24} className="group-hover:translate-x-1 transition-transform" />}
-                  <span>{isSignUp ? 'إنشاء الحساب' : 'دخول للنظام'}</span>
+                  {isForgotPassword ? <KeyRound size={24} className="group-hover:scale-110 transition-transform" /> : <LogIn size={24} className="group-hover:-translate-x-1 transition-transform" />}
+                  <span>{isForgotPassword ? 'إرسال رابط الاستعادة' : 'دخول للنظام'}</span>
                 </>
               )}
             </button>
-            
-            <button
-              type="button"
-              onClick={() => onLoginSuccess({ user: { id: 'demo-user' } })}
-              className="w-full bg-slate-800/50 hover:bg-slate-700/50 p-4 rounded-2xl font-bold text-sm text-slate-400 border border-slate-800 transition-all"
-            >
-              دخول تجريبي (Demo Mode)
-            </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-slate-800/50">
-            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-3xl p-6 text-center space-y-4">
-              <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest">مركز الدعم والإرشاد</h4>
-              <p className="text-sm text-slate-300 font-bold leading-relaxed">تائه أو تواجه مشكلة؟ انضم لقناتنا الرسمية لمتابعة الشروحات أو تواصل معنا مباشرة</p>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a 
-                  href="https://whatsapp.com/channel/0029VbDO2IV4dTnTLatpja2u" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 py-3 rounded-2xl font-black text-xs transition-all border border-emerald-600/20"
+          {!isForgotPassword && (
+            <div className="mt-10 pt-8 border-t border-slate-800/50">
+              <p className="text-slate-500 text-sm font-bold text-center">
+                ليس لديك حساب بعد؟
+                <button 
+                  type="button" 
+                  onClick={onNavigateToRegister} 
+                  className="text-emerald-400 hover:text-emerald-300 font-black mr-2 transition-colors inline-flex items-center"
                 >
-                  <Store size={16} /> تابع القناة
-                </a>
-                <a 
-                  href="https://wa.me/201152628515" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 py-3 rounded-2xl font-black text-xs transition-all border border-blue-600/20"
-                >
-                  <Mail size={16} /> تواصل مع الدعم
-                </a>
-              </div>
+                  افتح محلك الآن 🚀
+                </button>
+              </p>
             </div>
-
-            <p className="text-slate-500 text-xs font-bold mt-6 mb-4 text-center">
-              {isSignUp ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟'}
-              <button 
-                type="button" 
-                onClick={() => setIsSignUp(!isSignUp)} 
-                className="text-emerald-400 hover:text-emerald-300 font-black mr-2 transition-colors"
-              >
-                {isSignUp ? 'سجل دخولك' : 'إنشاء حساب جديد'}
-              </button>
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Cloud Database Settings */}
@@ -311,3 +312,4 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 };
 
 export default LoginPage;
+
